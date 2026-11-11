@@ -8,4 +8,4 @@ Pull requests need a Conventional Commit title and meaningful `## Summary` and `
 
 Keep public examples generic. Do not add repository inventories, private findings, credentials, internal hostnames, or exceptions belonging to a particular deployment.
 
-Release commits are immutable. Tag a verified commit with a new version, then update example pins to that commit in a follow-up change. Do not move published version tags. Review source and bundle changes together before releasing.
+To release, run `npm run release:prepare -- patch`, `minor`, or `major` from a clean release branch after fetching tags. Review and commit the package files and changelog together. CI publishes the new version after the PR merges and verification passes on main. See the [release guide](../docs/releases.md) for the full process and recovery rules. Do not move published version tags. Review source and bundle changes together before releasing, and update example pins separately when appropriate.

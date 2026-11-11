@@ -8,6 +8,8 @@ The workflows in `.github/workflows/` maintain this library. The templates in [e
 
 The PR policy job uses a pinned, published implementation with no token permissions or checkout. This checks the PR's title and body independently of changes to the candidate source. The Verify and PR policy jobs are required checks on this repository's main branch.
 
+After Verify succeeds on main, the Publish release job creates a new version tag and GitHub Release when the package version has not been published yet. It validates synchronized package/changelog metadata and uses only a repository-scoped workflow token. PR runs cannot publish; ordinary pushes with the existing version are a no-op. See the [release guide](releases.md).
+
 Tests verify the implemented behavior, including rejection cases and branch-tip races. Dependency advisory checks cover known advisories in installed packages. Neither is a complete security review of an arbitrary change.
 
 ## Nightly maintenance

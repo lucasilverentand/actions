@@ -36,3 +36,24 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: lucasilverentand/actions/pr-policy@97f2521e931e2fbded98a3c7e3d8759d3272edbd # reviewed implementation
+  release:
+    name: Publish release
+    needs: verify
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: release-publication
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - run: node scripts/release/publish.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -17,14 +17,17 @@ lib/                         Shared GitHub API and Actions runtime helpers
 tools/
   fleet-audit/               Local/private CLI, inventory discovery, docs, and tests
 scripts/                     Build and repository validation utilities
+  release/                   Version preparation, guarded publication, and tests
 test/                        Integration checks for the published action packages
 docs/
   getting-started.md          Walkthrough and adoption steps
   automation.md              What this repository runs itself
+  releases.md                Semantic versioning, release PRs, and publication
   examples/                  Copyable workflows for consuming repositories
   legal/                     Bundled dependency license notices
 README.md                    Starting point and links
 LICENSE                      Repository license
+CHANGELOG.md                 Reviewed notes for each shared action version
 package.json                 One set of dependencies and development commands
 package-lock.json            Locked dependency versions and integrity hashes
 ```

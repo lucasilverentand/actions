@@ -12,6 +12,8 @@ Start with the [walkthrough and setup guide](docs/getting-started.md), then copy
 
 For a read-only inventory across your personal repositories, use the separate [fleet audit tool](tools/fleet-audit/). It runs locally or in a private controller and writes a private, ignored report.
 
+All actions share one semantic version and [changelog](CHANGELOG.md). The [release guide](docs/releases.md) explains how to prepare a version PR and how CI publishes it after verification.
+
 ## Repository map
 
 Each action folder contains its own usage reference, manifest, source, tests, and generated bundle. Shared helpers live in `lib/`; build utilities live in `scripts/`. The [architecture guide](docs/architecture.md) explains the layout, and the [automation guide](docs/automation.md) explains this repository's CI and nightly jobs.
