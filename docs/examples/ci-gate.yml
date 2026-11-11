@@ -1,0 +1,25 @@
+name: Required CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions: {}
+jobs:
+  # Replace this demonstration job with the repository's real suite jobs.
+  tests:
+    # PR-triggered: keep GitHub-hosted for repositories that accept fork PRs. See docs/runner-compatibility.md.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: node -e "console.log('Replace this example with the real test command')"
+  required:
+    name: CI required
+    needs: [tests]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: seventwo-studio/actions/ci-gate@e7df504d6d30f8531f166183a7721cb71dc732d6
+        with:
+          needs: ${{ toJSON(needs) }}
+          required-jobs: '["tests"]'

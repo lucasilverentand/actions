@@ -1,0 +1,34 @@
+name: Semantic release
+description: Plan or publish immutable semantic releases from verified default-branch commits.
+author: Luca Silverentand
+inputs:
+  token:
+    description: Contents read for planning or Contents write for publication.
+    default: ${{ github.token }}
+  dry-run:
+    description: Preview by default; set false explicitly to publish.
+    default: 'true'
+  needs:
+    description: Caller toJSON(needs); publication requires nonempty successful upstream jobs.
+    default: '{}'
+  initial-version:
+    description: Stable semantic version for the first release only.
+    default: '1.0.0'
+outputs:
+  planned:
+    description: Whether unreleased commits require a version.
+  created:
+    description: Whether this run published a release.
+  superseded:
+    description: Whether a newer default-branch commit took over; nothing was written.
+  version:
+    description: Planned stable semantic version, or empty for no change.
+  tag:
+    description: Immutable v-prefixed tag, or empty for no change.
+  notes:
+    description: Generated notes from unreleased Conventional Commit subjects.
+  url:
+    description: Published release URL, or empty for previews and no changes.
+runs:
+  using: node24
+  main: dist/index.mjs

@@ -21,3 +21,9 @@ Use repository-scoped GitHub App tokens where possible. Administrative audits ne
 The public source contains generic policy and code. Private repository inventories, audit findings, credentials, internal endpoints, and operational exceptions belong elsewhere. Fleet reports are ignored by Git and are written locally with restrictive permissions. Do not upload them to public workflow logs, issues, summaries, or artifacts.
 
 Action dependencies are bundled. Committed bundles must match the source build. CI checks this and audits the lockfile for known dependency advisories. Actions used by workflows are pinned to full commit SHAs; dependency updates still require review.
+
+## Additional action boundaries
+
+Workflow policy inspects immutable PR content without executing it. Commit policy treats messages as data. The CI gate retains only dependency result states, not upstream outputs. Its caller owns the complete dependency list.
+
+Release publication defaults to preview and requires a trusted default-branch event, successful upstream results and explicit write activation. Tags never move. Fleet actions require a private controller before discovery and again before exposing their report path; keep artifacts private and bounded in retention. Windows runners must protect private temporary directories using account ACLs; POSIX modes alone do not establish Windows access control.

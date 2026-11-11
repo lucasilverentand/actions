@@ -1,0 +1,37 @@
+name: Semantic release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: semantic-release
+  cancel-in-progress: false
+jobs:
+  verify:
+    # Unset AUTOMATION_RUNNER uses GitHub-hosted Ubuntu; set it to a JSON runner selector for your own runners.
+    runs-on: ${{ fromJSON(vars.AUTOMATION_RUNNER || '"ubuntu-latest"') }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      # Adapt these commands to the repository's verification contract.
+      - run: npm ci --ignore-scripts
+      - run: npm test
+  release:
+    needs: verify
+    runs-on: ${{ fromJSON(vars.AUTOMATION_RUNNER || '"ubuntu-latest"') }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: seventwo-studio/actions/release@e7df504d6d30f8531f166183a7721cb71dc732d6
+        with:
+          # After reviewing the plan, set false and grant this job contents: write.
+          dry-run: 'true'
+          needs: ${{ toJSON(needs) }}

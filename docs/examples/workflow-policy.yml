@@ -1,0 +1,15 @@
+name: Workflow policy
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  workflow-policy:
+    # PR-triggered: keep GitHub-hosted for repositories that accept fork PRs. See docs/runner-compatibility.md.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: seventwo-studio/actions/workflow-policy@e7df504d6d30f8531f166183a7721cb71dc732d6

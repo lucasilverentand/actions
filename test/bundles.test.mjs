@@ -2,24 +2,26 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { tmpdir, EOL } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
+import { pathToFileURL } from 'node:url';
 import { parse } from 'yaml';
+import { actions } from '../scripts/actions.mjs';
 
 const execute = promisify(execFile);
 
 test('published manifests resolve to bundles that load without repository dependencies', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'action-packages-'));
   try {
-    for (const name of ['pr-policy', 'repository-audit', 'branch-cleanup']) {
+    for (const name of actions) {
       await cp(name, join(directory, name), { recursive: true });
       const metadata = parse(await readFile(join(directory, name, 'action.yml'), 'utf8'));
       const entry = resolve(directory, name, metadata.runs.main);
       const { stdout } = await execute(process.execPath, [
         '--input-type=module', '-e',
         'const bundle = await import(process.env.BUNDLE_ENTRY); console.log(typeof bundle.main);',
-      ], { cwd: directory, env: { ...process.env, BUNDLE_ENTRY: entry } });
+      ], { cwd: directory, env: { ...process.env, BUNDLE_ENTRY: pathToFileURL(entry).href } });
       assert.equal(stdout.trim(), 'function');
     }
   } finally {
@@ -44,7 +46,7 @@ test('PR action executes through its relocated manifest entry point', async () =
       GITHUB_EVENT_NAME: 'pull_request', GITHUB_EVENT_PATH: eventPath,
       GITHUB_OUTPUT: outputPath, GITHUB_STEP_SUMMARY: summaryPath,
     } });
-    assert.equal(await readFile(outputPath, 'utf8'), 'valid=true\n');
+    assert.equal(await readFile(outputPath, 'utf8'), `valid=true${EOL}`);
     assert.match(await readFile(summaryPath, 'utf8'), /Title and body satisfy/);
   } finally {
     await rm(directory, { recursive: true, force: true });

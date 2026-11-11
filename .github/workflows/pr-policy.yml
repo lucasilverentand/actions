@@ -1,0 +1,16 @@
+name: PR policy
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+permissions: {}
+concurrency:
+  group: pr-policy-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  pr-policy:
+    name: PR policy
+    permissions: {}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: seventwo-studio/actions/pr-policy@defcc7507a747d88e8fd2c29f765e6a263db3488 # v1.3.0

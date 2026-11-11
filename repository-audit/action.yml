@@ -9,6 +9,9 @@ inputs:
   fail-on-error:
     description: Fail the job when an error or an unverified inspection is found.
     default: 'true'
+  required-checks:
+    description: JSON array of exact CI check names that must be required on the default branch.
+    default: '[]'
 outputs:
   findings:
     description: JSON array of findings. Keep this output in the consuming repository.

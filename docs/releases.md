@@ -2,7 +2,7 @@
 
 Merge an ordinary PR with a Conventional Commit title. After verification succeeds on main, CI calculates the next semantic version and publishes its tag and GitHub Release. There is no local release command, version-file update, or separate release PR.
 
-All three actions share the same version. Published stable GitHub Releases are the version source of truth. This repository's npm package is private development metadata and deliberately has no release version; it is never published to npm.
+All actions share the same version. Published stable GitHub Releases are the version source of truth. This repository's npm package is private development metadata and deliberately has no release version; it is never published to npm.
 
 ## How versions are chosen
 
@@ -50,3 +50,7 @@ The earlier v1.0.0, v1.0.1, and v1.1.0 releases are preserved. The [changelog](.
 ## Implementation
 
 `scripts/release/metadata.mjs` classifies Conventional Commits and performs semantic version arithmetic. `plan.mjs` discovers published versions, paginates unreleased commits, and generates the next version and notes. `publish.mjs` handles guarded, idempotent API publication. Tests under `scripts/release/test/` cover classification, pagination, first releases, repeat runs, failures, tag conflicts, and exact-commit publication.
+
+## Reuse from another repository
+
+The [release action](../release/README.md) packages the same planner and publisher with preview mode, upstream-job validation and a configurable initial stable version. It needs no checkout. Repository-specific package publication, deployment, signing and release acceptance remain separate.

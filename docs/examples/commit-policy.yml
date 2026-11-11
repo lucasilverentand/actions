@@ -1,0 +1,16 @@
+name: Commit policy
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  commit-policy:
+    # Unset AUTOMATION_RUNNER uses GitHub-hosted Ubuntu; set it to a JSON runner selector for your own runners.
+    runs-on: ${{ fromJSON(vars.AUTOMATION_RUNNER || '"ubuntu-latest"') }}
+    timeout-minutes: 5
+    steps:
+      # Replace with the reviewed implementation SHA after publication.
+      - uses: seventwo-studio/actions/commit-policy@e7df504d6d30f8531f166183a7721cb71dc732d6
+        with:
+          allow-scopes: 'false'

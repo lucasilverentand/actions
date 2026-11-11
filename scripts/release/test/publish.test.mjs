@@ -20,6 +20,7 @@ function fixture(options = {}) {
       headReads++;
       return { object: { sha: options.moved || (options.movedLater && headReads > 1) ? 'b'.repeat(40) : sha } };
     }
+    if (path.startsWith('/compare/') && options.headStatus) return { status: options.headStatus };
     if (path.startsWith('/releases?')) return options.releases ?? [{ tag_name: 'v1.2.3' }];
     if (path.startsWith('/releases/tags/') && options.existing) return options.existing;
     if (path.startsWith('/git/ref/tags/') && options.tag) return { object: options.tag };
@@ -40,7 +41,7 @@ test('publishes the exact verified commit and reviewed notes without moving exis
 });
 
 test('repeated runs leave published releases untouched', async () => {
-  const { api, writes } = fixture({ existing: { html_url: 'existing' } });
+  const { api, writes } = fixture({ existing: { html_url: 'existing' }, tag: { type: 'commit', sha } });
   assert.equal((await publishRelease(api, metadata, context)).created, false);
   assert.equal(writes.length, 0);
 });
@@ -84,4 +85,27 @@ test('API permission failures stop publication before tag creation', async () =>
   const { api, writes } = fixture({ fail: '/releases?per_page=100&page=1' });
   await assert.rejects(publishRelease(api, metadata, context));
   assert.equal(writes.length, 0);
+});
+
+test('existing releases must still have their exact verified tag, never silently accept a different commit', async () => {
+  for (const tag of [undefined, { type: 'commit', sha: 'b'.repeat(40) }]) {
+    const { api, writes } = fixture({ existing: { html_url: 'existing' }, tag });
+    await assert.rejects(publishRelease(api, metadata, context));
+    assert.equal(writes.length, 0);
+  }
+});
+
+test('an advance to a newer descendant is superseded before any mutation', async () => {
+  for (const change of [{ moved: true }, { movedLater: true }]) {
+    const { api, writes } = fixture({ ...change, headStatus: 'ahead' });
+    const result = await publishRelease(api, metadata, context);
+    assert.equal(result.superseded, true);
+    assert.equal(result.created, false);
+    assert.equal(writes.length, 0);
+  }
+  for (const headStatus of ['diverged', 'behind']) {
+    const { api, writes } = fixture({ moved: true, headStatus });
+    await assert.rejects(publishRelease(api, metadata, context));
+    assert.equal(writes.length, 0);
+  }
 });

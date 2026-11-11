@@ -5,7 +5,8 @@ on:
 permissions: {}
 jobs:
   pr-policy:
+    # PR-triggered: keep GitHub-hosted for repositories that accept fork PRs. See docs/runner-compatibility.md.
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: seventwo-studio/actions/pr-policy@f89330b3f65110c5a9e9c4cb2297d1b6668eecd8 # reviewed implementation
+      - uses: seventwo-studio/actions/pr-policy@e7df504d6d30f8531f166183a7721cb71dc732d6 # reviewed implementation

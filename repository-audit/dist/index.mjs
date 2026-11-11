@@ -7365,15 +7365,33 @@ var require_dist = __commonJS({
   }
 });
 
+// lib/network.mjs
+import * as http from "node:http";
+var configured = false;
+function configureProxy(env = process.env, configure = http.setGlobalProxyFromEnv) {
+  if (configured || !["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"].some((key) => env[key])) return;
+  if (typeof configure !== "function") {
+    if (env.NODE_USE_ENV_PROXY === "1") {
+      configured = true;
+      return;
+    }
+    throw new Error("Proxy runners require Node 24.14+ or NODE_USE_ENV_PROXY=1 at runner startup.");
+  }
+  configure(env);
+  configured = true;
+}
+
 // lib/github.mjs
 var ApiError = class extends Error {
   constructor(status) {
     super(`GitHub API returned ${status}.`);
+    this.name = "ApiError";
     this.status = status;
   }
 };
 var GitHub = class {
   constructor(token, repository = process.env.GITHUB_REPOSITORY, fetcher = fetch) {
+    configureProxy();
     if (!token) throw new Error("A GitHub token is required.");
     if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository ?? "")) {
       throw new Error("Expected owner/repository.");
@@ -7422,68 +7440,11 @@ var GitHub = class {
   }
 };
 
-// repository-audit/src/workflows.mjs
-var import_yaml = __toESM(require_dist(), 1);
-function inspectWorkflow(source, path) {
-  const findings = [];
-  const add = (rule, message) => findings.push({ rule, message, path, level: "error" });
-  try {
-    const document = (0, import_yaml.parseDocument)(source, { uniqueKeys: true });
-    if (document.errors.length) throw new Error("Invalid YAML.");
-    const workflow = document.toJS({ maxAliasCount: 50 });
-    if (!workflow || typeof workflow !== "object" || !workflow.jobs || typeof workflow.jobs !== "object") {
-      throw new Error("Invalid workflow.");
-    }
-    const triggers = typeof workflow.on === "string" ? [workflow.on] : Array.isArray(workflow.on) ? workflow.on : Object.keys(workflow.on ?? {});
-    const privileged = triggers.includes("pull_request_target") || triggers.includes("workflow_run");
-    if (!Object.hasOwn(workflow, "permissions")) add("workflow-permissions", "Declare workflow-level token permissions explicitly.");
-    if (workflow.permissions === "write-all") add("workflow-write-all", "Grant write permissions only to the jobs that need them.");
-    for (const job of Object.values(workflow.jobs)) {
-      if (!job || typeof job !== "object") throw new Error("Invalid job.");
-      if (job.permissions === "write-all") add("workflow-write-all", "Avoid write-all job permissions.");
-      if (job.uses) inspectUses(job.uses);
-      if (job["secrets"] === "inherit") add("workflow-secrets", "Pass only the secrets a reusable workflow needs.");
-      if (job["runs-on"] && (!Number.isFinite(job["timeout-minutes"]) || job["timeout-minutes"] < 1 || job["timeout-minutes"] > 60)) {
-        add("workflow-timeout", "Set a job timeout between 1 and 60 minutes.");
-      }
-      if (triggers.some((t) => ["pull_request", "pull_request_target"].includes(t)) && JSON.stringify(job["runs-on"] ?? "").includes("self-hosted")) {
-        add("workflow-runner", "Use GitHub-hosted runners for pull request workflows.");
-      }
-      for (const step of job.steps ?? []) {
-        if (step.uses) {
-          inspectUses(step.uses);
-          if (/^actions\/checkout@/.test(step.uses)) {
-            if (privileged) add("workflow-privileged-checkout", "Review privileged event workflows: checkout is forbidden by this policy.");
-            if (step.with?.["persist-credentials"] !== false && step.with?.["persist-credentials"] !== "false") {
-              add("workflow-checkout-credentials", "Set persist-credentials: false on checkout.");
-            }
-          }
-        }
-        for (const script of [step.run, step.with?.script]) {
-          if (typeof script === "string" && /\$\{\{(?:(?!\}\})[\s\S])*(?:github\.(?:event|head_ref|ref_name)|inputs\.)(?:(?!\}\})[\s\S])*\}\}/.test(script)) {
-            add("workflow-injection", "Pass event data and inputs through environment variables instead of interpolating them into scripts.");
-          }
-        }
-      }
-    }
-  } catch {
-    add("workflow-parse", "Could not safely parse this workflow; inspect its YAML and structure.");
-  }
-  return findings;
-  function inspectUses(uses) {
-    if (typeof uses !== "string") return add("workflow-pin", "Action references must be literal strings.");
-    if (uses.startsWith("./")) return;
-    if (uses.startsWith("docker://")) {
-      if (!/@sha256:[a-f0-9]{64}$/.test(uses)) add("workflow-pin", "Pin container actions to a SHA-256 digest.");
-    } else if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+@[a-f0-9]{40}$/.test(uses)) {
-      add("workflow-pin", "Pin external actions and reusable workflows to full commit SHAs.");
-    }
-  }
-}
-
 // lib/runtime.mjs
-import { appendFileSync, readFileSync } from "node:fs";
+import { appendFileSync, readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { randomUUID } from "node:crypto";
+import { EOL } from "node:os";
 function input(name, fallback = "") {
   return process.env[`INPUT_${name.replaceAll(" ", "_").toUpperCase()}`] ?? fallback;
 }
@@ -7492,9 +7453,12 @@ function boolean(value) {
   return value === "true";
 }
 function output(name, value) {
+  if (!/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(name)) throw new Error("Invalid output name.");
   if (process.env.GITHUB_OUTPUT) {
-    appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${JSON.stringify(value)}
-`);
+    const text = typeof value === "string" ? value : JSON.stringify(value);
+    if (text === void 0) throw new Error("Undefined output value.");
+    const delimiter = `output_${randomUUID()}`;
+    appendFileSync(process.env.GITHUB_OUTPUT, /[\r\n]/.test(text) ? `${name}<<${delimiter}${EOL}${text}${EOL}${delimiter}${EOL}` : `${name}=${text}${EOL}`);
   }
 }
 function summary(title, lines) {
@@ -7507,17 +7471,143 @@ ${lines.join("\n")}
 function escapeMarkdown(value) {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "&#124;").replaceAll("\r", " ").replaceAll("\n", " ").replaceAll("`", "&#96;").replaceAll("[", "&#91;").replaceAll("]", "&#93;");
 }
+var genericFailure = "Action failed. Check its configuration, token permissions, and GitHub API availability.";
+var platformErrorKeys = ["code", "errno", "syscall", "path", "cmd", "stdout", "stderr", "cause", "errors"];
+function failureMessage(error) {
+  const own = error instanceof Error && (Object.getPrototypeOf(error) === Error.prototype || error.name === "ApiError") && !platformErrorKeys.some((key) => Object.hasOwn(error, key));
+  const message = own ? String(error.message).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/gu, " ").trim().slice(0, 300) : "";
+  return `::error::${(message || genericFailure).replaceAll("%", "%25")}`;
+}
 function runIfMain(meta, fn) {
-  if (process.argv[1] && meta.url === pathToFileURL(process.argv[1]).href) {
-    fn().catch(() => {
-      console.error("Action failed. Check its configuration, token permissions, and GitHub API availability.");
+  if (process.argv[1] && meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
+    fn().catch((error) => {
+      console.error(failureMessage(error));
       process.exitCode = 1;
     });
   }
 }
 
-// repository-audit/src/index.mjs
-async function auditRepository(api) {
+// repository-audit/src/workflows.mjs
+var import_yaml = __toESM(require_dist(), 1);
+var mapping = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+var permissions = /* @__PURE__ */ new Set(["actions", "artifact-metadata", "attestations", "checks", "contents", "deployments", "discussions", "id-token", "issues", "models", "packages", "pages", "pull-requests", "security-events", "statuses"]);
+function inspectWorkflow(source, path) {
+  const findings = [];
+  const add = (rule, message) => findings.push({ rule, message, path, level: "error" });
+  try {
+    const document = (0, import_yaml.parseDocument)(source, { uniqueKeys: true });
+    if (document.errors.length || document.warnings.length) throw new Error("Invalid or unsupported YAML.");
+    const workflow = document.toJS({ maxAliasCount: 50 });
+    if (!mapping(workflow) || !mapping(workflow.jobs) || !Object.keys(workflow.jobs).length) {
+      throw new Error("Invalid workflow.");
+    }
+    const triggers = typeof workflow.on === "string" ? [workflow.on] : Array.isArray(workflow.on) ? workflow.on : mapping(workflow.on) ? Object.keys(workflow.on) : [];
+    if (!triggers.length || triggers.some((name) => typeof name !== "string" || !/^[a-z][a-z0-9_]*$/.test(name))) {
+      throw new Error("Invalid workflow triggers.");
+    }
+    const privileged = triggers.includes("pull_request_target") || triggers.includes("workflow_run");
+    if (!Object.hasOwn(workflow, "permissions")) add("workflow-permissions", "Declare workflow-level token permissions explicitly.");
+    else inspectPermissions(workflow.permissions);
+    for (const job of Object.values(workflow.jobs)) {
+      if (!mapping(job)) throw new Error("Invalid job.");
+      if (Object.hasOwn(job, "permissions")) inspectPermissions(job.permissions);
+      if (job.uses) inspectUses(job.uses);
+      else if (!job["runs-on"] || !Array.isArray(job.steps) || !job.steps.length) throw new Error("Invalid executable job.");
+      if (job["secrets"] === "inherit") add("workflow-secrets", "Pass only the secrets a reusable workflow needs.");
+      if (job["runs-on"] && (!Number.isFinite(job["timeout-minutes"]) || job["timeout-minutes"] < 1)) {
+        add("workflow-timeout", "Set an explicit job timeout of at least 1 minute.");
+      }
+      if (triggers.some((t) => ["pull_request", "pull_request_target"].includes(t)) && JSON.stringify(job["runs-on"] ?? "").includes("self-hosted") && !trustedPullRequestGate(job.if, triggers)) {
+        add("workflow-runner", "Use GitHub-hosted PR runners or an explicit job gate that excludes fork PRs from persistent runners.");
+      }
+      if (job.container !== void 0) inspectContainer(job.container);
+      if (job.services !== void 0) {
+        if (!mapping(job.services)) throw new Error("Invalid services.");
+        for (const service of Object.values(job.services)) inspectContainer(service);
+      }
+      if (job.steps !== void 0 && !Array.isArray(job.steps)) throw new Error("Invalid steps.");
+      for (const step of job.steps ?? []) {
+        if (!mapping(step) || typeof step.run !== "string" && typeof step.uses !== "string" || step.run !== void 0 && step.uses !== void 0) throw new Error("Invalid step.");
+        if (step.uses) {
+          inspectUses(step.uses);
+          if (/^actions\/checkout@/i.test(step.uses)) {
+            if (privileged) add("workflow-privileged-checkout", "Review privileged event workflows: checkout is forbidden by this policy.");
+            if (step.with?.["persist-credentials"] !== false && step.with?.["persist-credentials"] !== "false") {
+              add("workflow-checkout-credentials", "Set persist-credentials: false on checkout.");
+            }
+          }
+        }
+        for (const script of [step.run, step.with?.script]) {
+          const normalized = typeof script === "string" ? script.replace(/\[\s*['"]([A-Za-z_][A-Za-z0-9_-]*)['"]\s*\]/g, ".$1") : "";
+          if (/\$\{\{(?:(?!\}\})[\s\S])*(?:github\s*\.\s*(?:event|head_ref|ref_name)(?![A-Za-z0-9_])|inputs\s*(?:\.|\[))(?:(?!\}\})[\s\S])*\}\}/i.test(normalized)) {
+            add("workflow-injection", "Pass event data and inputs through environment variables instead of interpolating them into scripts.");
+          }
+        }
+      }
+    }
+  } catch {
+    add("workflow-parse", "Could not safely parse this workflow; inspect its YAML and structure.");
+  }
+  return findings;
+  function inspectPermissions(value) {
+    if (value === "write-all") return add("workflow-write-all", "Grant only the token permissions each job needs.");
+    if (value === "read-all") return;
+    if (!mapping(value) || Object.entries(value).some(([scope, access]) => !permissions.has(scope) || !(scope === "id-token" ? ["write", "none"] : scope === "models" ? ["read", "none"] : ["read", "write", "none"]).includes(access))) {
+      add("workflow-permissions", "Token permissions must be an explicit supported permission map or read-all.");
+    }
+  }
+  function inspectContainer(value) {
+    const image = mapping(value) ? value.image : value;
+    if (typeof image !== "string" || !/^[^\s@]+@sha256:[a-f0-9]{64}$/.test(image)) {
+      add("workflow-container-pin", "Pin job and service container images to SHA-256 digests.");
+    }
+  }
+  function inspectUses(uses) {
+    if (typeof uses !== "string") return add("workflow-pin", "Action references must be literal strings.");
+    if (uses.startsWith("./")) return;
+    if (uses.startsWith("docker://")) {
+      if (!/@sha256:[a-f0-9]{64}$/.test(uses)) add("workflow-pin", "Pin container actions to a SHA-256 digest.");
+    } else if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+@[a-f0-9]{40}$/.test(uses)) {
+      add("workflow-pin", "Pin external actions and reusable workflows to full commit SHAs.");
+    }
+  }
+}
+function trustedPullRequestGate(condition, triggers) {
+  if (typeof condition !== "string") return false;
+  const normalized = condition.trim().replace(/^\$\{\{\s*([\s\S]*?)\s*\}\}$/, "$1").replace(/\s+/g, " ").trim();
+  const sameRepository = "github.event.pull_request.head.repo.full_name == github.repository";
+  if (normalized === sameRepository) return true;
+  return !triggers.includes("pull_request_target") && ["'pull_request'", '"pull_request"'].some((name) => normalized === `github.event_name != ${name} || ${sameRepository}`);
+}
+
+// lib/concurrency.mjs
+async function mapConcurrent(items, concurrency, mapper) {
+  if (!Array.isArray(items) || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > 16 || typeof mapper !== "function") {
+    throw new Error("Invalid concurrent inspection configuration.");
+  }
+  const results = new Array(items.length);
+  let next = 0;
+  let failed = false;
+  async function worker() {
+    while (!failed && next < items.length) {
+      const index = next++;
+      try {
+        results[index] = await mapper(items[index], index);
+      } catch {
+        failed = true;
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+  if (failed) throw new Error("Concurrent inspection failed. Verify access and API availability.");
+  return results;
+}
+
+// repository-audit/src/audit.mjs
+async function auditRepository(api, { requiredChecks = [] } = {}) {
+  if (!Array.isArray(requiredChecks) || requiredChecks.length > 100 || requiredChecks.some((check) => typeof check !== "string" || !check.trim() || check !== check.trim())) {
+    throw new Error("required-checks must be a JSON array of nonempty check names.");
+  }
   const findings = [];
   const add = (rule, message, level = "error") => findings.push({ rule, message, level });
   const repo = await api.get("");
@@ -7533,7 +7623,7 @@ async function auditRepository(api) {
   }
   await inspect("branch-protection", async () => {
     const branch = encodeURIComponent(ref);
-    const rules = await api.get(`/rules/branches/${branch}`);
+    const rules = await api.list(`/rules/branches/${branch}`);
     const types = new Set(rules.map((r) => r.type));
     let classic;
     try {
@@ -7544,8 +7634,16 @@ async function auditRepository(api) {
     if (!types.has("pull_request") && !classic?.required_pull_request_reviews) {
       add("require-pull-request", "Require pull requests for the default branch.");
     }
-    if (!types.has("required_status_checks") && !classic?.required_status_checks?.contexts?.length && !classic?.required_status_checks?.checks?.length) {
+    const checkNames = new Set([
+      ...rules.filter((rule) => rule.type === "required_status_checks").flatMap((rule) => (rule.parameters?.required_status_checks ?? []).map((check) => check.context)),
+      ...classic?.required_status_checks?.contexts ?? [],
+      ...(classic?.required_status_checks?.checks ?? []).map((check) => check.context)
+    ].filter((check) => typeof check === "string" && check.trim()));
+    if (!checkNames.size) {
       add("require-checks", "Require CI status checks for the default branch.");
+    }
+    for (const check of requiredChecks) {
+      if (!checkNames.has(check)) add("required-check", `Require the configured CI status check: ${check}.`);
     }
     if (!types.has("non_fast_forward") && (!classic || classic.allow_force_pushes?.enabled !== false)) {
       add("block-force-push", "Block force pushes to the default branch.");
@@ -7560,9 +7658,9 @@ async function auditRepository(api) {
     if (classic && !classic.enforce_admins?.enabled) add("admin-bypass", "Classic branch protection permits administrator bypass.", "warning");
   });
   await inspect("actions-permissions", async () => {
-    const permissions = await api.get("/actions/permissions/workflow");
-    if (permissions.default_workflow_permissions !== "read") add("default-token", "Make the default workflow token read-only.");
-    if (permissions.can_approve_pull_request_reviews) add("actions-approval", "Disable workflow permission to create and approve pull requests.");
+    const permissions2 = await api.get("/actions/permissions/workflow");
+    if (permissions2.default_workflow_permissions !== "read") add("default-token", "Make the default workflow token read-only.");
+    if (permissions2.can_approve_pull_request_reviews) add("actions-approval", "Disable workflow permission to create and approve pull requests.");
   });
   await inspect("vulnerability-alerts", async () => {
     try {
@@ -7579,8 +7677,14 @@ async function auditRepository(api) {
       }
     }
   }
-  await inspect("repository-files", async () => {
-    const root = await api.get("/contents", { ref });
+  let contentRef;
+  await inspect("default-branch-head", async () => {
+    const commit = await api.get(`/commits/${encodeURIComponent(ref)}`);
+    if (!/^[a-f0-9]{40}$/.test(commit.sha ?? "")) throw new Error("Invalid commit.");
+    contentRef = commit.sha;
+  });
+  if (contentRef) await inspect("repository-files", async () => {
+    const root = await api.get("/contents", { ref: contentRef });
     if (!Array.isArray(root) || root.length >= 1e3) throw new Error("Incomplete directory.");
     const github = await directory(".github");
     const docs = await directory("docs");
@@ -7595,17 +7699,20 @@ async function auditRepository(api) {
       add("dependency-updates", "Configure Dependabot or Renovate (an external bot configuration must be verified separately).", "warning");
     }
   });
-  await inspect("workflow-audit", async () => {
+  if (contentRef) await inspect("workflow-audit", async () => {
     const workflows = await directory(".github/workflows");
     if (!workflows.length) add("workflows", "Add CI workflows.", "warning");
-    for (const file of workflows.filter((f) => /\.ya?ml$/.test(f.name))) {
-      findings.push(...inspectWorkflow(await api.file(file.path, ref), file.path));
-    }
+    const inspected = await mapConcurrent(
+      workflows.filter((file) => /\.ya?ml$/.test(file.name)),
+      4,
+      async (file) => inspectWorkflow(await api.file(file.path, contentRef), file.path)
+    );
+    findings.push(...inspected.flat());
   });
   return findings;
   async function directory(path) {
     try {
-      const entries = await api.get(`/contents/${path}`, { ref });
+      const entries = await api.get(`/contents/${path}`, { ref: contentRef });
       if (!Array.isArray(entries) || entries.length >= 1e3) throw new Error("Incomplete directory.");
       return entries;
     } catch (error) {
@@ -7621,9 +7728,11 @@ async function auditRepository(api) {
     }
   }
 }
+
+// repository-audit/src/index.mjs
 async function main() {
   const api = new GitHub(input("token"));
-  const findings = await auditRepository(api);
+  const findings = await auditRepository(api, { requiredChecks: JSON.parse(input("required-checks", "[]")) });
   output("findings", findings);
   output("passed", !findings.some((f) => f.level === "error"));
   summary("Repository audit", findings.length ? [

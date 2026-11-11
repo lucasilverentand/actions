@@ -7,10 +7,11 @@ permissions:
   contents: read
 jobs:
   audit:
-    runs-on: ubuntu-latest
+    # Unset AUTOMATION_RUNNER uses GitHub-hosted Ubuntu; set it to a JSON runner selector for your own runners.
+    runs-on: ${{ fromJSON(vars.AUTOMATION_RUNNER || '"ubuntu-latest"') }}
     timeout-minutes: 10
     steps:
-      - uses: seventwo-studio/actions/repository-audit@f89330b3f65110c5a9e9c4cb2297d1b6668eecd8 # reviewed implementation
+      - uses: seventwo-studio/actions/repository-audit@e7df504d6d30f8531f166183a7721cb71dc732d6 # reviewed implementation
         with:
           # Store a repository-scoped, read-only audit credential in this repo.
           token: ${{ secrets.REPOSITORY_AUDIT_TOKEN }}

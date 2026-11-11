@@ -16,17 +16,20 @@ export async function stableReleases(api) {
   throw new Error('Incomplete release inventory.');
 }
 
-export async function planRelease(api, sha) {
+export async function planRelease(api, sha, { initialVersion = '1.0.0' } = {}) {
   if (!/^[a-f0-9]{40}$/.test(sha ?? '')) throw new Error('Expected an exact release commit.');
+  parseVersion(initialVersion);
   const releases = await stableReleases(api);
   const latest = releases.sort((a, b) => compareVersions(b.tag_name.slice(1), a.tag_name.slice(1)))[0];
+  const baseSha = latest ? (await api.request('GET', `/commits/${encodeURIComponent(latest.tag_name)}`)).sha : null;
+  if (latest && !/^[a-f0-9]{40}$/.test(baseSha ?? '')) throw new Error('Cannot resolve the previous release commit.');
   const commits = [];
   let complete = false;
   let total;
   for (let page = 1; page <= 100; page++) {
     let batch;
     if (latest) {
-      const comparison = await api.request('GET', `/compare/${encodeURIComponent(latest.tag_name)}...${sha}?per_page=100&page=${page}`);
+      const comparison = await api.request('GET', `/compare/${baseSha}...${sha}?per_page=100&page=${page}`);
       if (!['ahead', 'identical'].includes(comparison.status) || !Number.isSafeInteger(comparison.total_commits) || comparison.total_commits < 0) {
         throw new Error('Release history is divergent or incomplete.');
       }
@@ -45,7 +48,7 @@ export async function planRelease(api, sha) {
       commits.some((commit) => !/^[a-f0-9]{40}$/.test(commit.sha ?? ''))) throw new Error('Invalid or duplicate commits.');
   const level = analyzeCommits(commits);
   if (!level) return null;
-  const version = latest ? bumpVersion(latest.tag_name.slice(1), level) : '1.0.0';
+  const version = latest ? bumpVersion(latest.tag_name.slice(1), level) : initialVersion;
   const notes = '## Changes\n\n' + commits.map((commit) =>
     `- ${escapeMarkdown(commit.commit.message.split(/\r?\n/)[0])} (${commit.sha.slice(0, 7)})`).join('\n');
   return { version, tag: `v${version}`, notes };

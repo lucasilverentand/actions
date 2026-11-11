@@ -1,0 +1,28 @@
+name: Private fleet audit
+description: Audit selected personal or organization repositories from a private controller.
+author: Luca Silverentand
+inputs:
+  token:
+    description: Explicit read-only credential covering the controller and repositories to inspect.
+    required: true
+  organization:
+    description: Organization login. Omit to inspect the credential's personal repositories.
+    default: ''
+  fail-on-error:
+    description: Fail when errors or unverified inspections are found. False changes exit status only.
+    default: 'true'
+  inspection-concurrency:
+    description: Number of repositories audited concurrently (1–4).
+    default: '2'
+outputs:
+  report-path:
+    description: Absolute path to a private JSON report in the runner temporary directory.
+  repository-count:
+    description: Number of accessible active non-fork repositories audited.
+  error-count:
+    description: Number of error-level findings, including unverified inspections.
+  passed:
+    description: JSON boolean; true when no error-level findings were recorded.
+runs:
+  using: node24
+  main: dist/index.mjs

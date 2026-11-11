@@ -14,11 +14,11 @@ feat!: simplify the configuration format
 docs: clarify setup instructions
 ```
 
-The default maximum is 100 Unicode code points. Surrounding whitespace, control characters, and multiline titles fail.
+The default maximum is 100 Unicode code points for the complete title, as in earlier releases. Set `max-summary-length` (for example `'72'`) to also limit the summary after the type and optional scope. Set `allow-scopes: 'false'` where the repository requires unscoped subjects. Surrounding whitespace, control characters, directional overrides, and multiline titles fail.
 
 ## Body rules
 
-Bodies need Summary and Testing sections with at least 12 characters of meaningful content in each. Headings are case-insensitive; the usual format is:
+Bodies need Summary and Testing sections with at least 12 letters or numbers in each. Headings are case-insensitive, and nested subsections remain part of their parent. The usual format is:
 
 ```markdown
 ## Summary
@@ -30,19 +30,29 @@ Handle empty documents without throwing an exception.
 Ran the parser unit tests, including empty input cases.
 ```
 
-Comments, empty sections, and placeholder-only answers do not satisfy the check. Explain skipped tests, for example: “Not run: documentation-only changes.” There are no bot exemptions.
+Comments, fenced examples, formatting-only sections, and placeholder-only answers do not satisfy the check. Explain skipped tests, for example: “Not run: documentation-only changes.” There are no bot exemptions.
 
-The action checks structure. It cannot verify whether the described tests ran or whether the description accurately explains the change. Conventional Commit types and required section names are policy in the source; only the title length is an input.
+Enable `require-issue-reference: 'true'` to require a tracked work item in the PR body. A visible issue key such as `ENG-123`, including a linked issue URL, satisfies the check. `issue-prefixes: '["ENG", "OPS"]'` restricts accepted teams. Hidden comments, fenced examples, and inline-code examples do not count. This is a syntax check; it does not contact the issue tracker or verify the issue's existence, acceptance, or relationship to the change.
+
+Required issue keys must appear in visible text or an inline link URL. Reference-style links should put the key in their visible label, for example `[ENG-123][task]`; an issue key appearing only in a reference definition does not count. Unused definitions and code examples cannot satisfy linkage.
+
+The action checks structure. It cannot verify whether the described tests ran or whether the description accurately explains the change. Conventional Commit types and required section names remain policy in the source.
 
 ## Interface
 
 | Input | Default | Meaning |
 | --- | --- | --- |
 | `max-title-length` | `100` | Maximum Unicode code points; accepts 40–200 |
+| `max-summary-length` | `100` | Maximum code points after the type and optional scope; accepts 1–200 |
+| `allow-scopes` | `true` | Allow `fix(parser): ...`; set false for unscoped subjects |
+| `require-issue-reference` | `false` | Require a visible tracked issue key in the body |
+| `issue-prefixes` | `[]` | JSON array of uppercase issue keys; empty allows any prefix |
 
 The `valid` output is a JSON boolean. A violation fails the step and writes guidance to the job summary.
 
 Configure squash commits to use the PR title and body if you want the validated text to become the commit message. This is a repository setting; the action does not change it.
+
+Compared with earlier releases, the length defaults are unchanged. Empty Markdown, formatting-only sections and placeholders are rejected more consistently. Adopt an updated immutable pin deliberately.
 
 ## Files
 

@@ -1,0 +1,23 @@
+name: Required CI gate
+description: Require upstream jobs to succeed and write a source-specific CI receipt.
+author: Luca Silverentand
+inputs:
+  needs:
+    description: The caller's toJSON(needs) result. Define every required job in the job's needs list.
+    required: true
+  required-jobs:
+    description: JSON array of job IDs that must be present, in addition to checking every supplied job.
+    default: '[]'
+  allow-skipped:
+    description: JSON array of explicitly optional jobs permitted to be skipped.
+    default: '[]'
+outputs:
+  passed:
+    description: Whether every supplied and required job satisfied the gate.
+  failures:
+    description: JSON list of missing or unsuccessful jobs.
+  receipt-path:
+    description: Private receipt file under RUNNER_TEMP, without upstream job outputs.
+runs:
+  using: node24
+  main: dist/index.mjs
