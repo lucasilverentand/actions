@@ -20,3 +20,5 @@ Published tags and releases are immutable. Conflicting tags, stale heads and ver
 Outputs: `planned`, `created` (booleans), `version`, `tag`, `notes`, `url` (ordinary strings). No-change runs return empty strings. Notes include commit subjects; private repositories must preserve their access boundary around these outputs.
 
 Use [the adoption example](../docs/examples/release.yml). This action targets one stable release stream with `v` tags. Package publishing, monorepo versions, prereleases, signing, deployment and rollback stay in their owning workflows. It does not automatically replace an existing Release Please manifest strategy.
+
+For adoption into an existing project without a stable published release, the first plan checks the entire reachable history. All those subjects must satisfy the supported Conventional Commit syntax. Otherwise, first establish a reviewed stable GitHub Release at the intended migration baseline; a bare tag is not enough. `initial-version` selects the first version and does not skip historical validation.

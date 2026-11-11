@@ -55,3 +55,5 @@ Compared with the original policy, the 72-character summary bound and stronger r
 ## Files
 
 `action.yml` declares the public interface. `src/index.mjs` implements the policy; `test/` covers it. `dist/index.mjs` is the generated, self-contained file GitHub executes. Rebuild it with `npm run build` from the repository root.
+
+Required issue keys must appear in visible text or an inline link URL. Reference-style links should put the key in their visible label, for example `[ENG-123][task]`; an issue key appearing only in a reference definition does not count. Unused definitions and code examples cannot satisfy linkage.
