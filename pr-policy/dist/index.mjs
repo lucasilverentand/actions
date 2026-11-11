@@ -108,7 +108,7 @@ function checkPullRequest(pr, maxTitleLength = 100, options = {}) {
   }
   for (const name of ["summary", "testing"]) {
     const content = (sections.get(name) ?? []).join("\n").trim();
-    const meaningful = content.replace(/^\s*(?:[-*+]\s+)?(?:\[[ xX]\]\s*)?/gm, "").replace(/<[^>]*>/g, "").replace(/[*_`~]/g, "").trim();
+    const meaningful = content.replace(/^\s*(?:[-*+]\s+)?(?:\[[ xX]\]\s*)?/gm, "").replace(/<[^>]*>/g, " ").replace(/[*_`~]/g, "").trim();
     const letters = meaningful.match(/[\p{L}\p{N}]/gu) ?? [];
     if (letters.length < 12 || /^(?:(?:todo|tbd|n\/?a|none|not tested|describe (?:your changes|testing))[.!\s*_`~-]*)+$/i.test(meaningful)) {
       findings.push(`Add a substantive ${name === "summary" ? "## Summary" : "## Testing"} section. Explain skipped tests when relevant.`);
