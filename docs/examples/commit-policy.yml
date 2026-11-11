@@ -10,7 +10,6 @@ jobs:
     runs-on: ${{ fromJSON(vars.AUTOMATION_RUNNER || '"ubuntu-latest"') }}
     timeout-minutes: 5
     steps:
-      # Replace with the reviewed implementation SHA after publication.
-      - uses: seventwo-studio/actions/commit-policy@e7df504d6d30f8531f166183a7721cb71dc732d6
+      - uses: seventwo-studio/actions/commit-policy@517b07c39cd92a88e01a636f9fc372207b586fba # v1.4.0
         with:
           allow-scopes: 'false'
