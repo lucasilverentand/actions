@@ -13,14 +13,19 @@ inputs:
     description: Minimum age of both the merge and the tip commit (7–3650 days).
     default: '30'
   max-deletions:
-    description: Abort if the total number of candidates exceeds this limit (1–100).
+    description: Abort deletion if the total number of candidates exceeds this limit (1–100). Previews always report all candidates.
     default: '10'
   keep-prefixes:
     description: JSON array of additional branch prefixes to retain. Built-in exclusions always apply.
     default: '[]'
+  inspection-concurrency:
+    description: Number of branches inspected concurrently (1–8). Deletion remains serial.
+    default: '4'
 outputs:
   candidates:
     description: JSON array of branch names and expected SHAs.
+  candidate-count:
+    description: Number of eligible branches, including previews above the deletion limit.
   deleted-count:
     description: Number of branches deleted.
 runs:

@@ -1,7 +1,8 @@
 import { build } from 'esbuild';
+import { actions } from './actions.mjs';
 
 await build({
-  entryPoints: ['pr-policy', 'repository-audit', 'branch-cleanup'].map((action) => ({
+  entryPoints: actions.map((action) => ({
     in: `${action}/src/index.mjs`,
     out: `${action}/dist/index`,
   })),

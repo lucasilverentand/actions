@@ -1,0 +1,15 @@
+name: Workflow policy
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  workflow-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Replace with a reviewed full commit SHA containing workflow-policy.
+      - uses: seventwo-studio/actions/workflow-policy@0000000000000000000000000000000000000000

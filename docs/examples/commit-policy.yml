@@ -1,0 +1,15 @@
+name: Commit policy
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  commit-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Replace with the reviewed implementation SHA after publication.
+      - uses: seventwo-studio/actions/commit-policy@0000000000000000000000000000000000000000
+        with:
+          allow-scopes: 'false'

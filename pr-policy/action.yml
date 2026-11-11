@@ -5,6 +5,18 @@ inputs:
   max-title-length:
     description: Maximum title length in Unicode code points (40–200).
     default: '100'
+  max-summary-length:
+    description: Maximum summary length after the type and optional scope (1–200 Unicode code points).
+    default: '72'
+  allow-scopes:
+    description: Allow optional Conventional Commit scopes.
+    default: 'true'
+  require-issue-reference:
+    description: Require a visible tracked issue key in the PR body.
+    default: 'false'
+  issue-prefixes:
+    description: JSON array of accepted issue prefixes; empty accepts any uppercase prefix.
+    default: '[]'
 outputs:
   valid:
     description: JSON boolean indicating whether the title and body pass.

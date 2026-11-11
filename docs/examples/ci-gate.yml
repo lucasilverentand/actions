@@ -1,0 +1,24 @@
+name: Required CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions: {}
+jobs:
+  # Replace this demonstration job with the repository's real suite jobs.
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: node -e "console.log('Replace this example with the real test command')"
+  required:
+    name: CI required
+    needs: [tests]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: seventwo-studio/actions/ci-gate@0000000000000000000000000000000000000000
+        with:
+          needs: ${{ toJSON(needs) }}
+          required-jobs: '["tests"]'

@@ -2,16 +2,39 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { cleanupBranches, retained, oldEnough } from '../src/index.mjs';
+import { cleanupBranches, retained, oldEnough, deleteWithLease } from '../src/index.mjs';
 
 const execute = promisify(execFile);
 const sha = 'a'.repeat(40);
 const old = '2025-01-01T00:00:00Z';
 const now = Date.parse('2026-01-01T00:00:00Z');
 const options = { dryRun: true, days: 30, now, maxDeletions: 10, extraPrefixes: [] };
+
+test('deletion isolates inherited repository settings and requires modern environment-only authentication', async () => {
+  const previous = process.env.GIT_DIR;
+  process.env.GIT_DIR = '/unexpected/repository';
+  try {
+    const calls = [];
+    await deleteWithLease({ token: 'test-token', repository: 'example/project' }, { name: 'fix/old', commit: { sha } }, async (command, args, settings) => {
+      calls.push(args);
+      assert.equal(settings.env.GIT_DIR, undefined);
+      assert.ok(args.every((arg) => !arg.includes('test-token')));
+      return { stdout: 'git version 2.50.0.windows.1' };
+    });
+    assert.ok(calls[1].includes('--template='));
+    assert.ok(calls[2].includes(`--force-with-lease=refs/heads/fix/old:${sha}`));
+    let invocations = 0;
+    await assert.rejects(deleteWithLease({ token: 'test-token', repository: 'example/project' }, { name: 'fix/old', commit: { sha } }, async () => {
+      invocations++; return { stdout: 'git version 2.30.0' };
+    }), /2.31/);
+    assert.equal(invocations, 1);
+  } finally {
+    if (previous === undefined) delete process.env.GIT_DIR; else process.env.GIT_DIR = previous;
+  }
+});
 
 function fixture(overrides = {}) {
   const repo = { id: 1, owner: { login: 'example' }, default_branch: 'main' };
@@ -26,7 +49,7 @@ function fixture(overrides = {}) {
         return overrides.rules ?? [];
       }
       if (path.startsWith('/commits/')) return { commit: { committer: { date: overrides.date ?? old }, author: { date: old } } };
-      if (path.startsWith('/branches/')) return { ...branch, ...overrides.currentBranch, commit: { sha: overrides.moved ? 'b'.repeat(40) : sha } };
+      if (path.startsWith('/branches/')) return { ...branch, name: decodeURIComponent(path.slice('/branches/'.length)), ...overrides.currentBranch, commit: { sha: overrides.moved ? 'b'.repeat(40) : sha } };
       throw new Error(`Unexpected ${path}`);
     },
     async list(path, query) {
@@ -35,7 +58,7 @@ function fixture(overrides = {}) {
         branchReads++;
         return overrides.open || (overrides.openLater && branchReads > 1) ? [pr] : [];
       }
-      return overrides.merged === false ? [] : [{ ...pr, ...overrides.pr }];
+      return overrides.merged === false ? [] : [{ ...pr, head: { ...pr.head, ref: query.head.split(':').slice(1).join(':') }, ...overrides.pr }];
     },
   };
 }
@@ -58,6 +81,18 @@ test('deletes only after rechecking eligibility', async () => {
   assert.equal(deleted, 1);
   assert.equal(result.deleted.length, 1);
 });
+test('deletions remain serial even when eligibility reads are concurrent', async () => {
+  let active = 0;
+  let peak = 0;
+  const result = await cleanupBranches(fixture({ count: 3 }), { ...options, dryRun: false, concurrency: 3 }, async () => {
+    active++;
+    peak = Math.max(peak, active);
+    await new Promise(setImmediate);
+    active--;
+  });
+  assert.equal(result.deleted.length, 3);
+  assert.equal(peak, 1);
+});
 test('retains unmerged, changed-tip, recent, protected, ruled, open PR and wrong-base branches', async () => {
   for (const change of [
     { merged: false }, { pr: { head: { ref: 'fix/old-bug', sha: 'b'.repeat(40), repo: { id: 1 } } } },
@@ -78,7 +113,12 @@ test('skips branches that move or acquire an open PR between discovery and delet
 test('API failures and excessive deletion counts abort without deleting', async () => {
   await assert.rejects(cleanupBranches(fixture({ failRules: true }), options));
   // maxDeletions is checked after collecting all candidates.
-  await assert.rejects(cleanupBranches(fixture(), { ...options, maxDeletions: 0 }, () => assert.fail('Deletion despite limit')));
+  await assert.rejects(cleanupBranches(fixture({ count: 11 }), { ...options, dryRun: false }, () => assert.fail('Deletion despite limit')));
+});
+test('preview still reports candidates when the deletion limit is exceeded', async () => {
+  const result = await cleanupBranches(fixture({ count: 11 }), options, () => assert.fail('Deletion in preview'));
+  assert.equal(result.candidates.length, 11);
+  assert.equal(result.deleted.length, 0);
 });
 test('fork and archived repositories cannot be cleaned', async () => {
   for (const repo of [{ fork: true }, { archived: true }]) await assert.rejects(cleanupBranches(fixture({ repo }), options));
@@ -87,11 +127,13 @@ test('git force-with-lease refuses deletion after a concurrent push', async () =
   const dir = await mkdtemp(join(tmpdir(), 'lease-test-'));
   const remote = join(dir, 'remote.git');
   const client = join(dir, 'client.git');
-  const git = (args, cwd = client, extra = {}) => execute('git', args, { cwd, env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', ...extra } });
+  const emptyFile = join(dir, 'empty');
+  const git = (args, cwd = client, extra = {}) => execute('git', args, { cwd, env: { ...process.env, GIT_CONFIG_GLOBAL: emptyFile, GIT_CONFIG_NOSYSTEM: '1', ...extra } });
   try {
-    await execute('git', ['init', '--bare', '--quiet', remote]);
-    await execute('git', ['init', '--bare', '--quiet', client]);
-    const tree = (await git(['hash-object', '-w', '-t', 'tree', '/dev/null'], client, {}));
+    await writeFile(emptyFile, '');
+    await git(['init', '--bare', '--quiet', remote], dir);
+    await git(['init', '--bare', '--quiet', client], dir);
+    const tree = (await git(['hash-object', '-w', '-t', 'tree', emptyFile], client, {}));
     const env = { GIT_AUTHOR_NAME: 'Test', GIT_AUTHOR_EMAIL: 'test@example.com', GIT_COMMITTER_NAME: 'Test', GIT_COMMITTER_EMAIL: 'test@example.com' };
     const first = (await git(['commit-tree', tree.stdout.trim(), '-m', 'first'], client, env)).stdout.trim();
     const second = (await git(['commit-tree', tree.stdout.trim(), '-p', first, '-m', 'second'], client, env)).stdout.trim();

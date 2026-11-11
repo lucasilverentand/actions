@@ -1,0 +1,29 @@
+name: Commit policy
+description: Validate Conventional Commit messages in an immutable push or pull request commit range.
+author: Luca Silverentand
+inputs:
+  token:
+    description: Repository credential with Contents read permission.
+    default: ${{ github.token }}
+  max-summary-length:
+    description: Maximum length after the type and optional scope (1–200 Unicode code points).
+    default: '72'
+  max-subject-length:
+    description: Maximum complete subject length (40–200 Unicode code points).
+    default: '100'
+  allow-scopes:
+    description: Allow optional Conventional Commit scopes.
+    default: 'true'
+  max-commits:
+    description: Maximum number of commits to inspect; exceeding the limit fails (1–1000).
+    default: '250'
+outputs:
+  valid:
+    description: JSON boolean indicating whether every inspected commit passes.
+  checked-count:
+    description: Number of inspected commits.
+  findings:
+    description: JSON array of commit SHAs and policy findings.
+runs:
+  using: node24
+  main: dist/index.mjs

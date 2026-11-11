@@ -1,0 +1,23 @@
+name: Workflow policy
+description: Inspect changed PR workflows or default-branch workflows without executing repository code.
+author: Luca Silverentand
+inputs:
+  token:
+    description: Repository-scoped credential with Contents read and Pull requests read.
+    required: true
+    default: ${{ github.token }}
+  fail-on-error:
+    description: Fail when policy violations or unverified inspections are found.
+    default: 'true'
+outputs:
+  findings:
+    description: JSON array of workflow findings.
+  passed:
+    description: JSON boolean; false for policy errors and unverified inspections.
+  inspected-sha:
+    description: Inspected immutable commit SHA, or null when unavailable.
+  inspected-count:
+    description: Number of workflow files in the completed inspection batch.
+runs:
+  using: node24
+  main: dist/index.mjs

@@ -1,6 +1,6 @@
 # Fleet audit
 
-Run the repository audit across accessible, active repositories in an explicit personal or organization scope. This is a standalone operator tool, separate from the three GitHub Actions.
+Run the repository audit across accessible, active repositories in an explicit personal or organization scope. Use this standalone command locally, or use the [fleet audit action](../../fleet-audit/) for scheduled runs in a private controller.
 
 From the repository root:
 
@@ -10,6 +10,8 @@ npm ci --ignore-scripts
 node tools/fleet-audit/index.mjs
 # Repositories owned by a named organization:
 node tools/fleet-audit/index.mjs --org seventwo-studio
+# Limit simultaneous repository audits (default 2, range 1–4):
+node tools/fleet-audit/index.mjs --org seventwo-studio --concurrency 2
 ```
 
 The command uses `GH_TOKEN`, then `GITHUB_TOKEN`, or existing `gh` CLI authentication. A full audit needs Contents read, Administration read, and vulnerability alerts read for each selected repository. See the [audit reference](../../repository-audit/).
@@ -20,4 +22,4 @@ Reports go to `reports/audit.json` relative to the current working directory, wi
 
 Run locally or in a private controller repository. In GitHub Actions, the tool verifies the controller's private status through the API before scanning. Keep credentials and report retention in that private controller. Do not upload reports to public logs, summaries, issues, or artifacts. The root `.gitignore` excludes `reports/`.
 
-`index.mjs` handles authentication, privacy checks, reporting, and invocation of the shared audit. `inventory.mjs` handles explicit scope selection, discovery, and pagination; its tests live in `test/`. To change audit rules, edit `repository-audit/src/` rather than adding a separate rule set here.
+`index.mjs` handles CLI authentication and invocation. `core.mjs` shares controller checks, report generation, and private file writing with the action. `inventory.mjs` handles explicit scope selection, discovery, and pagination; tests live in `test/`. To change audit rules, edit `repository-audit/src/` rather than adding a separate rule set here.

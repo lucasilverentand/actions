@@ -1,6 +1,6 @@
 # Repository structure
 
-The three root action directories are the public interface. Their names appear in consumers' `uses:` references, so they remain stable. Each owns its implementation, tests, reference documentation, and runnable bundle.
+The root action directories are the public interface. Their names appear in consumers' `uses:` references, so they remain stable. Each owns its implementation, tests, reference documentation, and runnable bundle.
 
 ```text
 .github/                     CI, nightly jobs, dependency updates, community policies
@@ -12,6 +12,11 @@ pr-policy/                   PR metadata checks
   dist/index.mjs             Generated bundle GitHub runs
 repository-audit/            Same structure; also owns src/workflows.mjs
 branch-cleanup/              Same structure; includes deletion-lease tests
+commit-policy/               Immutable commit range policy
+workflow-policy/             Pre-merge workflow inspection
+fleet-audit/                 Private scheduled inventory and reporting
+ci-gate/                     Upstream job gate and receipt
+release/                     Semantic release preview and publication
 lib/                         Shared GitHub API and Actions runtime helpers
   test/                      Shared helper tests
 tools/
@@ -42,9 +47,9 @@ The runtime bundle is a build artifact, not a second implementation to edit. Dep
 
 ## Dependency boundaries
 
-The three actions share the GitHub API client and input/output helpers in `lib/`. Workflow YAML inspection belongs to `repository-audit/src/` because it is part of that action's policy. PR and branch policies remain in their own action folders.
+The actions share the GitHub API client and input/output helpers in `lib/`. Workflow YAML inspection belongs to `repository-audit/src/` because it is part of that action's policy. PR and branch policies remain in their own action folders.
 
-The fleet tool imports the repository audit's source to reuse exactly the same checks. Its inventory discovery and command-line behavior live under `tools/fleet-audit/`; actions do not depend on that tool. Build and consistency checks in `scripts/` are development utilities.
+The fleet tool imports the repository audit's source to reuse exactly the same checks. Its inventory discovery and command-line behavior live under `tools/fleet-audit/`; the fleet action imports its reusable core without the CLI entry point. Build and consistency checks in `scripts/` are development utilities.
 
 Tests live beside the code they exercise. Root `test/` checks the packaged actions as consumers receive them, including loading the generated bundles from an isolated directory without `node_modules`.
 

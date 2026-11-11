@@ -64,10 +64,15 @@ test('organization inventory paginates and preserves organization filters', asyn
 test('CLI options require an explicit valid organization and reject accidental scope expansion', async () => {
   assert.deepEqual(inventoryOptions([]), {});
   assert.deepEqual(inventoryOptions(['--org', 'example-org']), { organization: 'example-org' });
+  assert.deepEqual(inventoryOptions(['--org', 'example-org', '--concurrency', '3']), { organization: 'example-org', concurrency: 3 });
+  assert.deepEqual(inventoryOptions(['--concurrency', '1']), { concurrency: 1 });
   for (const args of [['example-org'], ['--org'], ['--org', '../other'], ['--all'], ['--org', 'example-org', 'extra']]) {
     assert.throws(() => inventoryOptions(args));
   }
   await assert.rejects(ownedRepositories(async () => assert.fail('Invalid scope requested'), { organization: '../other' }));
+  for (const args of [['--concurrency', '0'], ['--concurrency', '5'], ['--concurrency'], ['--org', 'first', '--org', 'second']]) {
+    assert.throws(() => inventoryOptions(args));
+  }
 });
 
 test('organization permission failures are reported, never converted into an empty successful inventory', async () => {
@@ -75,4 +80,33 @@ test('organization permission failures are reported, never converted into an emp
     if (path === '/user') return { login: 'example' };
     throw { status: 403 };
   }, { organization: 'example-org' }));
+});
+
+test('invalid account identities and incomplete installation counts never become a passing empty inventory', async () => {
+  for (const identity of [{}, { login: '' }, { login: null }]) {
+    await assert.rejects(ownedRepositories(async (path) => {
+      assert.equal(path, '/user');
+      return identity;
+    }));
+  }
+  await assert.rejects(ownedRepositories(async (path) => {
+    if (path === '/user') throw { status: 403 };
+    return { total_count: 2, repositories: [repository] };
+  }));
+  await assert.rejects(ownedRepositories(async (path) => {
+    if (path === '/user') throw { status: 403 };
+    return { total_count: -1, repositories: [] };
+  }));
+  assert.deepEqual(await ownedRepositories(async (path) => {
+    if (path === '/user') throw { status: 403 };
+    return { total_count: 1, repositories: [repository] };
+  }), [repository]);
+});
+
+test('installation discovery rejects a count that changes while paginating', async () => {
+  await assert.rejects(ownedRepositories(async (path) => {
+    if (path === '/user') throw { status: 403 };
+    return path.endsWith('page=1') ? { total_count: 101, repositories: Array(100).fill(repository) }
+      : { total_count: 102, repositories: [repository, repository] };
+  }));
 });

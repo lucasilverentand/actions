@@ -16,8 +16,9 @@ export async function stableReleases(api) {
   throw new Error('Incomplete release inventory.');
 }
 
-export async function planRelease(api, sha) {
+export async function planRelease(api, sha, { initialVersion = '1.0.0' } = {}) {
   if (!/^[a-f0-9]{40}$/.test(sha ?? '')) throw new Error('Expected an exact release commit.');
+  parseVersion(initialVersion);
   const releases = await stableReleases(api);
   const latest = releases.sort((a, b) => compareVersions(b.tag_name.slice(1), a.tag_name.slice(1)))[0];
   const commits = [];
@@ -45,7 +46,7 @@ export async function planRelease(api, sha) {
       commits.some((commit) => !/^[a-f0-9]{40}$/.test(commit.sha ?? ''))) throw new Error('Invalid or duplicate commits.');
   const level = analyzeCommits(commits);
   if (!level) return null;
-  const version = latest ? bumpVersion(latest.tag_name.slice(1), level) : '1.0.0';
+  const version = latest ? bumpVersion(latest.tag_name.slice(1), level) : initialVersion;
   const notes = '## Changes\n\n' + commits.map((commit) =>
     `- ${escapeMarkdown(commit.commit.message.split(/\r?\n/)[0])} (${commit.sha.slice(0, 7)})`).join('\n');
   return { version, tag: `v${version}`, notes };

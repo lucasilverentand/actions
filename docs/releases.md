@@ -50,3 +50,7 @@ The earlier v1.0.0, v1.0.1, and v1.1.0 releases are preserved. The [changelog](.
 ## Implementation
 
 `scripts/release/metadata.mjs` classifies Conventional Commits and performs semantic version arithmetic. `plan.mjs` discovers published versions, paginates unreleased commits, and generates the next version and notes. `publish.mjs` handles guarded, idempotent API publication. Tests under `scripts/release/test/` cover classification, pagination, first releases, repeat runs, failures, tag conflicts, and exact-commit publication.
+
+## Reuse from another repository
+
+The [release action](../release/README.md) packages the same planner and publisher with preview mode, upstream-job validation and a configurable initial stable version. It needs no checkout. Repository-specific package publication, deployment, signing and release acceptance remain separate.

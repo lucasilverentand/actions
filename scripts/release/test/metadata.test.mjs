@@ -29,4 +29,5 @@ test('recognizes breaking headers and footers and never silently ignores unknown
   }
   assert.equal(analyzeCommits([]), null);
   assert.throws(() => analyzeCommits(commits('Unclassified change')));
+  assert.throws(() => analyzeCommits(commits('unknown: unrecognized type')));
 });

@@ -4,11 +4,13 @@ The workflows in `.github/workflows/` maintain this library. The templates in [e
 
 ## CI
 
-[ci.yml](../.github/workflows/ci.yml) runs on pushes to main, PR changes including title/body edits, and manual dispatch. Its Verify job installs the locked dependencies without lifecycle scripts, runs tests, rebuilds all action bundles, checks that the committed bundles match, validates workflow policy and manifests, and checks dependency advisories at moderate severity or higher.
+[ci.yml](../.github/workflows/ci.yml) runs on pushes to main, PR changes including title/body edits, and manual dispatch. Its Linux, macOS and Windows test jobs install the locked dependencies without lifecycle scripts, run tests, rebuild all action bundles, check that committed bundles match, validate workflow policy and manifests, and check dependency advisories at moderate severity or higher.
+
+The aggregate Verify job uses ci-gate and fails unless the whole matrix succeeds. A manually dispatched [runner compatibility workflow](../.github/workflows/runner-compatibility.yml) accepts a JSON runner selector, including self-hosted groups and labels. It runs only from the default branch and exercises the suite without remote deletion or publication. The selected pool must already be admitted to this repository.
 
 The PR policy job uses a pinned, published implementation with no token permissions or checkout. This checks the PR's title and body independently of changes to the candidate source. The Verify and PR policy jobs are required checks on this repository's main branch.
 
-After Verify succeeds on main, the Publish release job computes the next version from unreleased Conventional Commits, creates its tag at the verified SHA, and publishes generated notes on GitHub. It uses only a repository-scoped workflow token. PR runs cannot publish, no version files or release PRs are created, and an already-released commit is a no-op. See the [release guide](releases.md).
+After Verify succeeds on main, the Publish release job uses the bundled release action, passes actual upstream job results, and computes the next version from unreleased Conventional Commits, creates its tag at the verified SHA, and publishes generated notes on GitHub. It uses only a repository-scoped workflow token. PR runs cannot publish, no version files or release PRs are created, and an already-released commit is a no-op. See the [release guide](releases.md).
 
 Tests verify the implemented behavior, including rejection cases and branch-tip races. Dependency advisory checks cover known advisories in installed packages. Neither is a complete security review of an arbitrary change.
 

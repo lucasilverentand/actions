@@ -2,7 +2,7 @@ import { createRequire } from 'node:module'; const require = createRequire(impor
 
 // branch-cleanup/src/index.mjs
 import { execFile } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -64,9 +64,33 @@ var GitHub = class {
   }
 };
 
+// lib/concurrency.mjs
+async function mapConcurrent(items, concurrency, mapper) {
+  if (!Array.isArray(items) || !Number.isInteger(concurrency) || concurrency < 1 || concurrency > 16 || typeof mapper !== "function") {
+    throw new Error("Invalid concurrent inspection configuration.");
+  }
+  const results = new Array(items.length);
+  let next = 0;
+  let failed = false;
+  async function worker() {
+    while (!failed && next < items.length) {
+      const index = next++;
+      try {
+        results[index] = await mapper(items[index], index);
+      } catch {
+        failed = true;
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, worker));
+  if (failed) throw new Error("Concurrent inspection failed. Verify access and API availability.");
+  return results;
+}
+
 // lib/runtime.mjs
-import { appendFileSync, readFileSync } from "node:fs";
+import { appendFileSync, readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { randomUUID } from "node:crypto";
 function input(name, fallback = "") {
   return process.env[`INPUT_${name.replaceAll(" ", "_").toUpperCase()}`] ?? fallback;
 }
@@ -81,8 +105,15 @@ function integer(value, min, max) {
   return Number(value);
 }
 function output(name, value) {
+  if (!/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(name)) throw new Error("Invalid output name.");
   if (process.env.GITHUB_OUTPUT) {
-    appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${JSON.stringify(value)}
+    const text = typeof value === "string" ? value : JSON.stringify(value);
+    if (text === void 0) throw new Error("Undefined output value.");
+    const delimiter = `output_${randomUUID()}`;
+    appendFileSync(process.env.GITHUB_OUTPUT, /[\r\n]/.test(text) ? `${name}<<${delimiter}
+${text}
+${delimiter}
+` : `${name}=${text}
 `);
   }
 }
@@ -97,7 +128,7 @@ function escapeMarkdown(value) {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "&#124;").replaceAll("\r", " ").replaceAll("\n", " ").replaceAll("`", "&#96;").replaceAll("[", "&#91;").replaceAll("]", "&#93;");
 }
 function runIfMain(meta, fn) {
-  if (process.argv[1] && meta.url === pathToFileURL(process.argv[1]).href) {
+  if (process.argv[1] && meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
     fn().catch(() => {
       console.error("Action failed. Check its configuration, token permissions, and GitHub API availability.");
       process.exitCode = 1;
@@ -141,17 +172,14 @@ async function cleanupBranches(api, options, remove = deleteWithLease) {
   if (repo.archived || repo.disabled || repo.fork || !repo.default_branch) throw new Error("Repository is not eligible for cleanup.");
   const branches = await api.list("/branches");
   const active = openBranches(await api.list("/pulls", { state: "open" }), repo.id);
-  const candidates = [];
+  const selected = await mapConcurrent(branches, options.concurrency ?? 4, async (branch) => !active.has(branch.name) && await eligible(api, repo, branch, options));
+  const candidates = branches.filter((_, index) => selected[index]);
   const deleted = [];
-  for (const branch of branches) {
-    if (active.has(branch.name)) continue;
-    if (await eligible(api, repo, branch, options)) candidates.push(branch);
-  }
-  if (candidates.length > options.maxDeletions) throw new Error("Deletion limit exceeded. Review candidates and adjust the limit.");
+  if (!options.dryRun && candidates.length > options.maxDeletions) throw new Error("Deletion limit exceeded. Review candidates and adjust the limit.");
   for (const branch of candidates) {
     if (options.dryRun) continue;
     const currentRepo = await api.get("");
-    if (currentRepo.default_branch !== repo.default_branch || currentRepo.archived || currentRepo.disabled) {
+    if (currentRepo.default_branch !== repo.default_branch || currentRepo.archived || currentRepo.disabled || currentRepo.fork) {
       throw new Error("Repository settings changed during cleanup.");
     }
     const current = await api.get(`/branches/${encodeURIComponent(branch.name)}`);
@@ -163,14 +191,16 @@ async function cleanupBranches(api, options, remove = deleteWithLease) {
   }
   return { candidates, deleted };
 }
-async function deleteWithLease(api, branch) {
+async function deleteWithLease(api, branch, executeGit = execute) {
   const directory = await mkdtemp(join(tmpdir(), "branch-cleanup-"));
   try {
+    const emptyConfig = join(directory, "empty-global-config");
+    await writeFile(emptyConfig, "", { mode: 384, flag: "wx" });
     const auth = Buffer.from(`x-access-token:${api.token}`).toString("base64");
     const env = {
       ...process.env,
       GIT_CONFIG_NOSYSTEM: "1",
-      GIT_CONFIG_GLOBAL: "/dev/null",
+      GIT_CONFIG_GLOBAL: emptyConfig,
       GIT_TERMINAL_PROMPT: "0",
       GIT_CONFIG_COUNT: "2",
       GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader",
@@ -178,9 +208,25 @@ async function deleteWithLease(api, branch) {
       GIT_CONFIG_KEY_1: "credential.helper",
       GIT_CONFIG_VALUE_1: ""
     };
-    delete env.GIT_CONFIG_PARAMETERS;
-    await execute("git", ["init", "--bare", "--quiet", directory], { env, timeout: 3e4 });
-    await execute("git", [
+    for (const key of [
+      "GIT_DIR",
+      "GIT_COMMON_DIR",
+      "GIT_WORK_TREE",
+      "GIT_INDEX_FILE",
+      "GIT_OBJECT_DIRECTORY",
+      "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+      "GIT_NAMESPACE",
+      "GIT_PREFIX",
+      "GIT_CONFIG",
+      "GIT_CONFIG_PARAMETERS",
+      "GIT_TEMPLATE_DIR"
+    ]) delete env[key];
+    const version = /git version (\d+)\.(\d+)/.exec((await executeGit("git", ["--version"], { env, timeout: 3e4 })).stdout);
+    if (!version || Number(version[1]) < 2 || Number(version[1]) === 2 && Number(version[2]) < 31) {
+      throw new Error("Branch deletion requires Git 2.31 or newer for environment-only authentication.");
+    }
+    await executeGit("git", ["init", "--bare", "--template=", "--quiet", directory], { env, timeout: 3e4 });
+    await executeGit("git", [
       "-C",
       directory,
       "push",
@@ -201,20 +247,24 @@ async function main() {
   const repo = await api.get("");
   if (process.env.GITHUB_REF !== `refs/heads/${repo.default_branch}`) throw new Error("Cleanup must run on the default branch.");
   const dryRun = boolean(input("dry-run", "true"));
+  const maxDeletions = integer(input("max-deletions", "10"), 1, 100);
   const extraPrefixes = JSON.parse(input("keep-prefixes", "[]"));
   if (!Array.isArray(extraPrefixes) || extraPrefixes.some((p) => typeof p !== "string" || !p.length)) throw new Error("Invalid keep-prefixes.");
   const result = await cleanupBranches(api, {
     dryRun,
     days: integer(input("minimum-age-days", "30"), 7, 3650),
     now: Date.now(),
-    maxDeletions: integer(input("max-deletions", "10"), 1, 100),
-    extraPrefixes
+    maxDeletions,
+    extraPrefixes,
+    concurrency: integer(input("inspection-concurrency", "4"), 1, 8)
   });
   output("candidates", result.candidates.map((b) => ({ name: b.name, sha: b.commit.sha })));
+  output("candidate-count", result.candidates.length);
   output("deleted-count", result.deleted.length);
   summary("Branch cleanup", [
     dryRun ? "Dry run: no branches were deleted." : `Deleted ${result.deleted.length} branches.`,
     "",
+    ...dryRun && result.candidates.length > maxDeletions ? ["The candidate count exceeds max-deletions. A deletion run would stop before deleting any branches.", ""] : [],
     ...result.candidates.map((b) => `- ${escapeMarkdown(b.name)} (${b.commit.sha})`),
     ...result.candidates.length ? [] : ["No eligible branches."]
   ]);

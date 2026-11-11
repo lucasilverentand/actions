@@ -3,8 +3,9 @@ import { resolve, dirname } from 'node:path';
 import assert from 'node:assert/strict';
 import { parse } from 'yaml';
 import { inspectWorkflow } from '../repository-audit/src/workflows.mjs';
+import { actions } from './actions.mjs';
 
-for (const action of ['pr-policy', 'repository-audit', 'branch-cleanup']) {
+for (const action of actions) {
   const path = `${action}/action.yml`;
   const metadata = parse(await readFile(path, 'utf8'));
   assert.equal(metadata.runs.using, 'node24');

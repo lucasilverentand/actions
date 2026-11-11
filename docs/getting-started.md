@@ -1,12 +1,12 @@
 # Walkthrough and setup
 
-This repository supplies three actions that individual repositories can call, plus a standalone command for auditing multiple repositories. The workflows in `.github/workflows/` maintain this library itself. The files in `docs/examples/` are templates to install elsewhere.
+This repository supplies eight actions that individual repositories can call, plus a standalone command for auditing multiple repositories. The workflows in `.github/workflows/` maintain this library itself. The files in `docs/examples/` are templates to install elsewhere.
 
 ## 1. Check PR descriptions
 
 [PR policy](../pr-policy/) runs when a pull request is opened or changed. It reads the title and body from the event payload, checks the title format and required sections, and fails with guidance if they do not match the policy.
 
-The default title format is a Conventional Commit such as `fix(parser): handle empty input`, up to 100 characters. Bodies need Summary and Testing sections with useful text. This keeps merge history and review descriptions consistent. It does not run the described tests or judge the technical correctness of the change.
+The default title format is a Conventional Commit such as `fix(parser): handle empty input`, up to 100 characters with a 72-character summary. Scope restrictions and visible issue-key linkage are configurable. Bodies need Summary and Testing sections with useful text. This keeps merge history and review descriptions consistent. It does not run the described tests or judge the technical correctness of the change.
 
 Copy [pr-policy.yml](examples/pr-policy.yml) into the consuming repository's `.github/workflows/`. It needs no checkout, token permissions, or secrets. After its first successful run, add the check to default-branch protection. If squash commits should preserve this text, configure their title and message to use the PR title and body.
 
@@ -35,6 +35,20 @@ The [fleet audit tool](../tools/fleet-audit/) discovers accessible, active, owne
 Run it locally or in a private controller. It refuses to run in a public GitHub Actions repository. Omit scope options to inspect the authenticated personal account, or pass `--org seventwo-studio` to inspect that organization. Personal credentials list repositories accessible in the selected scope; App installation tokens are limited to the selected repositories in their installation. Neither can discover repositories outside its access.
 
 This command gives an inventory at the time it runs. For recurring per-repository enforcement, install the caller workflows in each repository. For recurring central reporting, schedule the command in a private controller and retain its reports privately. Creating or cloning this public library does not enroll the rest of an account.
+
+## Additional checks and releases
+
+[Workflow policy](../workflow-policy/) checks proposed workflow changes using immutable API content. Its trusted-base example needs no checkout of PR code. Require its check to catch configuration problems before merge.
+
+[Commit policy](../commit-policy/) checks actual messages in immutable commit ranges. For squash workflows, run it on pushes to the default branch and validate PR titles separately; enable PR commit checks when intermediate commits must also follow policy.
+
+[CI gate](../ci-gate/) provides one required check for upstream suites. Include all suites in its needs list and use always() so failures and skipped jobs reach the gate. Its receipt can be retained as an artifact.
+
+[Release](../release/) previews semantic versions from unreleased commits. Publication needs explicit activation, Contents write, successful upstream jobs and a non-cancelling concurrency group. Keep deployment and package publishing in their owning workflows.
+
+[Fleet audit](../fleet-audit/) runs the existing inventory in a private scheduled controller and retains a private report. Both audits and cleanup use bounded parallel reads; deletion remains serial.
+
+All actions support compatible hosted and self-hosted runners; see [runner compatibility](runner-compatibility.md).
 
 ## What this library runs itself
 
