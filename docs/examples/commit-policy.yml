@@ -10,6 +10,6 @@ jobs:
     timeout-minutes: 5
     steps:
       # Replace with the reviewed implementation SHA after publication.
-      - uses: seventwo-studio/actions/commit-policy@0000000000000000000000000000000000000000
+      - uses: seventwo-studio/actions/commit-policy@f3ec22312a6a9a9c0ae95b317400503359f2d2ee
         with:
           allow-scopes: 'false'

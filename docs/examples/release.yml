@@ -29,7 +29,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: seventwo-studio/actions/release@0000000000000000000000000000000000000000
+      - uses: seventwo-studio/actions/release@f3ec22312a6a9a9c0ae95b317400503359f2d2ee
         with:
           # After reviewing the plan, set false and grant this job contents: write.
           dry-run: 'true'

@@ -11,5 +11,4 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      # Replace with a reviewed full commit SHA containing workflow-policy.
-      - uses: seventwo-studio/actions/workflow-policy@0000000000000000000000000000000000000000
+      - uses: seventwo-studio/actions/workflow-policy@f3ec22312a6a9a9c0ae95b317400503359f2d2ee
