@@ -1,6 +1,7 @@
 import { appendFile } from 'node:fs/promises';
 import { runIfMain } from '../../lib/runtime.mjs';
-import { compareVersions, parseVersion, readMetadata } from './metadata.mjs';
+import { compareVersions, parseVersion } from './metadata.mjs';
+import { planRelease, stableReleases } from './plan.mjs';
 
 export class ReleaseApi {
   constructor(token, repository) {
@@ -42,19 +43,11 @@ export async function publishRelease(api, metadata, context) {
   const head = await api.request('GET', branchPath);
   if (head.object.sha !== context.sha) throw new Error('Default branch advanced; release from a fresh verified run.');
 
-  let complete = false;
-  for (let page = 1; page <= 100; page++) {
-    const releases = await api.request('GET', `/releases?per_page=100&page=${page}`);
-    if (!Array.isArray(releases)) throw new Error('Invalid release inventory.');
-    for (const release of releases) {
-      if (release.draft || release.prerelease || !/^v\d+\.\d+\.\d+$/.test(release.tag_name)) continue;
-      if (compareVersions(version, release.tag_name.slice(1)) < 0) throw new Error('Version is older than a published stable release.');
-    }
-    if (releases.length < 100) { complete = true; break; }
+  for (const release of await stableReleases(api)) {
+    if (compareVersions(version, release.tag_name.slice(1)) < 0) throw new Error('Version is older than a published stable release.');
   }
-  if (!complete) throw new Error('Incomplete release inventory.');
 
-  // Published versions are immutable. Ordinary pushes between releases are a no-op.
+  // Published versions are immutable; retries never edit an existing release.
   const existing = await optional(api, `/releases/tags/${tag}`);
   if (existing) {
     if (existing.draft || existing.prerelease) throw new Error('An unfinished release already uses this version.');
@@ -81,9 +74,16 @@ export async function publishRelease(api, metadata, context) {
 
 export async function main() {
   const api = new ReleaseApi(process.env.GH_TOKEN, process.env.GITHUB_REPOSITORY);
-  const result = await publishRelease(api, await readMetadata(), {
+  const context = {
     event: process.env.GITHUB_EVENT_NAME, ref: process.env.GITHUB_REF, sha: process.env.GITHUB_SHA,
-  });
+  };
+  const metadata = await planRelease(api, context.sha);
+  if (!metadata) {
+    console.log('No unreleased commits; no version changes.');
+    if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, '## Release\n\nNo unreleased commits; no version changes.\n');
+    return;
+  }
+  const result = await publishRelease(api, metadata, context);
   console.log(`${result.tag}: ${result.created ? 'published' : 'already published; no changes'}.`);
   if (process.env.GITHUB_STEP_SUMMARY) {
     await appendFile(process.env.GITHUB_STEP_SUMMARY, `## Release\n\n${result.tag}: ${result.created ? 'published' : 'already published; no changes'}.\n`);

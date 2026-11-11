@@ -1,34 +1,39 @@
-# Versioning and releases
+# Automatic versioning and releases
 
-All three actions share one semantic version. `package.json`, both root version fields in `package-lock.json`, and the newest `CHANGELOG.md` entry must agree. CI rejects mismatches, duplicate changelog versions, and missing release notes.
+Merge an ordinary PR with a Conventional Commit title. After verification succeeds on main, CI calculates the next semantic version and publishes its tag and GitHub Release. There is no local release command, version-file update, or separate release PR.
 
-Use patch releases for compatible fixes, minor releases for compatible features, and major releases for breaking changes. A maintainer chooses the bump; publishing happens automatically after the reviewed version change merges and verification passes on main. The private npm package is development metadata; this workflow publishes GitHub Releases, not npm packages.
+All three actions share the same version. Published stable GitHub Releases are the version source of truth. This repository's npm package is private development metadata and deliberately has no release version; it is never published to npm.
 
-## Prepare a release
+## How versions are chosen
 
-Merge the changes you want to release through ordinary PRs. Then start a release branch from an up-to-date main with no uncommitted changes:
+The publisher reads all commits between the highest published stable version and the verified main commit. Squash merging preserves the validated PR title and body as the commit message.
 
-```sh
-git switch main
-git pull --ff-only
-git fetch --tags
-git switch -c release/next
-npm run release:prepare -- patch
-```
+| Merged commit | Automatic bump |
+| --- | --- |
+| `feat: ...` or `feat(scope): ...` | Minor, such as 1.2.3 → 1.3.0 |
+| Any type with `!`, such as `fix(api)!: ...` | Major, such as 1.2.3 → 2.0.0 |
+| A `BREAKING CHANGE:` or `BREAKING-CHANGE:` footer | Major |
+| Other Conventional Commits, including fixes, docs, dependencies, and CI changes | Patch, such as 1.2.3 → 1.2.4 |
 
-Replace `patch` with `minor` or `major` when appropriate. The command increments the version, updates both package files, and adds a dated changelog entry using commit subjects since the current version tag. It creates no commit, tag, or GitHub release. Review the generated notes for clarity and group them if useful.
+The largest bump wins when several commits are pending. If an older CI run is canceled by a newer push, the next successful run includes all commits since the last published release. A repository with no stable releases starts at v1.0.0.
 
-Commit `package.json`, `package-lock.json`, and `CHANGELOG.md` together and open a PR with the usual Summary and Testing sections. Run `npm test` and `npm run check` before pushing. Merge after the required checks pass.
+Unclassified commit titles, divergent history, missing pages, and duplicate commit records stop planning rather than silently choosing a version. Normal PR policy and squash-only merging keep the expected commit format in place. Breaking changes should be explicitly marked before merging.
 
-## Publish
+## What CI publishes
 
-The Publish release job is part of [CI](../.github/workflows/ci.yml). It depends on successful verification and runs only on main pushes or a manual CI dispatch on main. PR runs cannot publish. Only this job receives Contents write permission through GitHub's short-lived repository token. It needs no stored credential and cannot approve or create PRs.
+The Publish release job in [CI](../.github/workflows/ci.yml) depends on Verify. It runs only on main pushes or a manual CI dispatch on main. PR runs cannot publish. Only that job receives Contents write permission through GitHub's short-lived repository token. It needs no stored credential or permission to create or approve PRs.
 
-The publisher validates the version files and notes, checks that its verified commit is still the default-branch head, and rejects versions older than a published stable release. It creates `vMAJOR.MINOR.PATCH` at that exact SHA and publishes the matching changelog section as the release body. It does not update example pins or move any existing tag.
+The publisher creates `vMAJOR.MINOR.PATCH` at the exact verified main SHA and generates notes from the merged commit titles, with their short SHAs. It does not commit version files, update main, or move existing tags. Full notes and the current version appear on the [GitHub Releases page](https://github.com/lucasilverentand/actions/releases).
 
-Pushes that retain an already-published version produce a no-op. Repeating a successful run does not alter the tag or release. If publication failed after tag creation, the same verified commit can resume publication when that tag points to it. A conflicting tag or a newer main commit stops the run rather than retagging code. Inspect the failed run before taking recovery action.
+Rerunning an already-released main commit finds no new commits and does nothing. Tag pushes do not trigger the main-branch workflow, so release publication cannot create a loop.
 
-The main workflow's concurrency policy can cancel an older run when a newer main push arrives. Release publication also has its own concurrency group. If a run was interrupted, dispatch CI on the current main; if an unpublished tag belongs to an older commit, inspect that verified commit and finish its release deliberately. Never move a version tag to repair a failed run.
+## Failure and recovery
+
+The publisher checks that the verified SHA is still the default-branch head before publishing and again before its first write. It rejects conflicting tags and versions older than an existing stable release. Protected tags are never moved.
+
+If publication failed after tag creation, the same verified commit can resume publication when that tag points to it. If main advanced in the meantime, inspect the failed run and tag before completing the interrupted release. Never retag code to repair a failure. A CI dispatch on current main retries version planning and publishing entirely in GitHub; it requires no local preparation.
+
+The publisher serializes release jobs, while the main workflow can cancel older runs when a newer push arrives. A narrow concurrent update can still stop a run safely. Any pending changes remain in the comparison with the last published release.
 
 ## Consume a release
 
@@ -40,8 +45,8 @@ Use the full commit SHA behind a reviewed release:
 
 The same SHA versions all three action folders. Existing pins and releases remain valid. Release tags are protected against update and deletion; moving `v1` aliases are intentionally not part of this workflow.
 
-`v1.0.0` and `v1.0.1` were published before this automation was introduced. Their existing tags and releases are preserved, and their history is recorded in the changelog. `v1.1.0` introduces the automated publication workflow.
+The earlier v1.0.0, v1.0.1, and v1.1.0 releases are preserved. The [changelog](../CHANGELOG.md) retains their history and links to automatically generated release notes.
 
 ## Implementation
 
-`scripts/release/metadata.mjs` validates versions and extracts notes. `prepare.mjs` prepares local version changes; `publish.mjs` handles guarded API publication. Tests under `scripts/release/test/` cover metadata rejection, preparation in a real temporary Git repository, repeat runs, permission failures, tag conflicts, and branch advances.
+`scripts/release/metadata.mjs` classifies Conventional Commits and performs semantic version arithmetic. `plan.mjs` discovers published versions, paginates unreleased commits, and generates the next version and notes. `publish.mjs` handles guarded, idempotent API publication. Tests under `scripts/release/test/` cover classification, pagination, first releases, repeat runs, failures, tag conflicts, and exact-commit publication.
