@@ -7417,6 +7417,22 @@ function runIfMain(meta, fn) {
 import { chmod, lstat, mkdir, mkdtemp, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+// lib/network.mjs
+import * as http from "node:http";
+var configured = false;
+function configureProxy(env = process.env, configure = http.setGlobalProxyFromEnv) {
+  if (configured || !["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"].some((key) => env[key])) return;
+  if (typeof configure !== "function") {
+    if (env.NODE_USE_ENV_PROXY === "1") {
+      configured = true;
+      return;
+    }
+    throw new Error("Proxy runners require Node 24.14+ or NODE_USE_ENV_PROXY=1 at runner startup.");
+  }
+  configure(env);
+  configured = true;
+}
+
 // lib/github.mjs
 var ApiError = class extends Error {
   constructor(status) {
@@ -7426,6 +7442,7 @@ var ApiError = class extends Error {
 };
 var GitHub = class {
   constructor(token, repository = process.env.GITHUB_REPOSITORY, fetcher = fetch) {
+    configureProxy();
     if (!token) throw new Error("A GitHub token is required.");
     if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository ?? "")) {
       throw new Error("Expected owner/repository.");
@@ -7787,6 +7804,7 @@ async function ownedRepositories(get, { organization } = {}) {
 
 // tools/fleet-audit/core.mjs
 function inventoryReader(token, fetcher = fetch) {
+  configureProxy();
   if (!token) throw new Error("A fleet audit credential is required.");
   return async function get(path) {
     if (!path.startsWith("/") || path.startsWith("//")) throw new Error("Invalid inventory API path.");

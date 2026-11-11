@@ -62,7 +62,11 @@ export async function cleanupBranches(api, options, remove = deleteWithLease) {
     }
     const current = await api.get(`/branches/${encodeURIComponent(branch.name)}`);
     if (current.commit.sha !== branch.commit.sha) continue;
-    const currentActive = openBranches(await api.list('/pulls', { state: 'open' }), repo.id);
+    const relatedPulls = await Promise.all([
+      api.list('/pulls', { state: 'open', head: `${repo.owner.login}:${branch.name}` }),
+      api.list('/pulls', { state: 'open', base: branch.name }),
+    ]);
+    const currentActive = openBranches(relatedPulls.flat(), repo.id);
     if (currentActive.has(branch.name) || !await eligible(api, currentRepo, current, options)) continue;
     await remove(api, branch);
     deleted.push(branch);
@@ -89,6 +93,24 @@ export async function deleteWithLease(api, branch, executeGit = execute) {
     const version = /git version (\d+)\.(\d+)/.exec((await executeGit('git', ['--version'], { env, timeout: 30_000 })).stdout);
     if (!version || Number(version[1]) < 2 || (Number(version[1]) === 2 && Number(version[2]) < 31)) {
       throw new Error('Branch deletion requires Git 2.31 or newer for environment-only authentication.');
+    }
+    // Read only transport settings from the runner's config, outside any worktree.
+    const transportEnv = { ...process.env };
+    for (const key of Object.keys(transportEnv)) {
+      if (/^GIT_(?:DIR|COMMON_DIR|WORK_TREE|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|NAMESPACE|PREFIX|CONFIG(?:_COUNT|_KEY_\d+|_VALUE_\d+|_PARAMETERS)?|TEMPLATE_DIR)$/.test(key)) delete transportEnv[key];
+    }
+    for (const key of ['http.sslCAInfo', 'http.sslCAPath', 'http.sslBackend', 'http.proxy']) {
+      let value;
+      try {
+        value = (await executeGit('git', ['config', '--get-urlmatch', key, `https://github.com/${api.repository}.git`],
+          { cwd: directory, env: transportEnv, timeout: 30_000 })).stdout.trim();
+      } catch (error) { if (error.code === 1) continue; throw error; }
+      if (!value) continue;
+      if (/[\r\n\0]/.test(value)) throw new Error('Invalid runner transport configuration.');
+      const index = Number(env.GIT_CONFIG_COUNT);
+      env[`GIT_CONFIG_KEY_${index}`] = key;
+      env[`GIT_CONFIG_VALUE_${index}`] = value;
+      env.GIT_CONFIG_COUNT = String(index + 1);
     }
     await executeGit('git', ['init', '--bare', '--template=', '--quiet', directory], { env, timeout: 30_000 });
     await executeGit('git', [

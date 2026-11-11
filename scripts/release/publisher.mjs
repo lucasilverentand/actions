@@ -1,8 +1,10 @@
 import { compareVersions, parseVersion } from './metadata.mjs';
 import { stableReleases } from './plan.mjs';
+import { configureProxy } from '../../lib/network.mjs';
 
 export class ReleaseApi {
   constructor(token, repository) {
+    configureProxy();
     if (!token || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository ?? '')) throw new Error('Missing release credentials or repository.');
     if (process.env.GITHUB_API_URL && process.env.GITHUB_API_URL !== 'https://api.github.com') throw new Error('Only GitHub.com is supported.');
     this.token = token;

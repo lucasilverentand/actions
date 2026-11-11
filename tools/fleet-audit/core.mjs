@@ -4,8 +4,10 @@ import { GitHub } from '../../lib/github.mjs';
 import { mapConcurrent } from '../../lib/concurrency.mjs';
 import { auditRepository } from '../../repository-audit/src/audit.mjs';
 import { ownedRepositories } from './inventory.mjs';
+import { configureProxy } from '../../lib/network.mjs';
 
 export function inventoryReader(token, fetcher = fetch) {
+  configureProxy();
   if (!token) throw new Error('A fleet audit credential is required.');
   return async function get(path) {
     if (!path.startsWith('/') || path.startsWith('//')) throw new Error('Invalid inventory API path.');

@@ -183,9 +183,26 @@ async function planRelease(api, sha, { initialVersion = "1.0.0" } = {}) {
   return { version, tag: `v${version}`, notes };
 }
 
+// lib/network.mjs
+import * as http from "node:http";
+var configured = false;
+function configureProxy(env = process.env, configure = http.setGlobalProxyFromEnv) {
+  if (configured || !["HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"].some((key) => env[key])) return;
+  if (typeof configure !== "function") {
+    if (env.NODE_USE_ENV_PROXY === "1") {
+      configured = true;
+      return;
+    }
+    throw new Error("Proxy runners require Node 24.14+ or NODE_USE_ENV_PROXY=1 at runner startup.");
+  }
+  configure(env);
+  configured = true;
+}
+
 // scripts/release/publisher.mjs
 var ReleaseApi = class {
   constructor(token, repository) {
+    configureProxy();
     if (!token || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository ?? "")) throw new Error("Missing release credentials or repository.");
     if (process.env.GITHUB_API_URL && process.env.GITHUB_API_URL !== "https://api.github.com") throw new Error("Only GitHub.com is supported.");
     this.token = token;

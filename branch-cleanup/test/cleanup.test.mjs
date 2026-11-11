@@ -22,10 +22,17 @@ test('deletion isolates inherited repository settings and requires modern enviro
       calls.push(args);
       assert.equal(settings.env.GIT_DIR, undefined);
       assert.ok(args.every((arg) => !arg.includes('test-token')));
+      if (args[0] === 'config') return { stdout: args[2] === 'http.sslCAInfo' ? '/runner/ca.pem\n' : args[2] === 'http.proxy' ? 'http://localhost:3128\n' : '' };
+      if (args.includes('push')) {
+        assert.equal(settings.env.GIT_CONFIG_COUNT, '4');
+        assert.equal(settings.env.GIT_CONFIG_KEY_2, 'http.sslCAInfo');
+        assert.equal(settings.env.GIT_CONFIG_VALUE_2, '/runner/ca.pem');
+        assert.equal(settings.env.GIT_CONFIG_KEY_3, 'http.proxy');
+      }
       return { stdout: 'git version 2.50.0.windows.1' };
     });
-    assert.ok(calls[1].includes('--template='));
-    assert.ok(calls[2].includes(`--force-with-lease=refs/heads/fix/old:${sha}`));
+    assert.ok(calls.find((args) => args[0] === 'init').includes('--template='));
+    assert.ok(calls.at(-1).includes(`--force-with-lease=refs/heads/fix/old:${sha}`));
     let invocations = 0;
     await assert.rejects(deleteWithLease({ token: 'test-token', repository: 'example/project' }, { name: 'fix/old', commit: { sha } }, async () => {
       invocations++; return { stdout: 'git version 2.30.0' };
