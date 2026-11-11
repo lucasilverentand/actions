@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);
+
 // src/runtime.mjs
 import { appendFileSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";

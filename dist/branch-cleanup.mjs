@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);
+
 // src/branch-cleanup.mjs
 import { execFile } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
