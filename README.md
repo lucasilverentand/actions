@@ -10,9 +10,9 @@ Reusable GitHub Actions for PR quality, repository configuration checks, and con
 
 Start with the [walkthrough and setup guide](docs/getting-started.md), then copy the workflows in [docs/examples/](docs/examples/) into a consuming repository. Examples pin reviewed implementation commits. Review updates and keep full commit pins.
 
-For a read-only inventory across your personal repositories, use the separate [fleet audit tool](tools/fleet-audit/). It runs locally or in a private controller and writes a private, ignored report.
+For a read-only inventory across your personal or organization repositories, use the separate [fleet audit tool](tools/fleet-audit/). It runs locally or in a private controller and writes a private, ignored report.
 
-All actions share one semantic version. CI calculates it from merged Conventional Commits and publishes [releases and notes](https://github.com/lucasilverentand/actions/releases) after verification. No local release command or version PR is needed. See the [release guide](docs/releases.md).
+All actions share one semantic version. CI calculates it from merged Conventional Commits and publishes [releases and notes](https://github.com/seventwo-studio/actions/releases) after verification. No local release command or version PR is needed. See the [release guide](docs/releases.md).
 
 ## Repository map
 

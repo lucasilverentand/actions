@@ -28,11 +28,11 @@ Copy [branch-cleanup.yml](examples/branch-cleanup.yml) and review previews. Dele
 
 This complements GitHub's ordinary automatic deletion after merge. It does not remove unmerged work simply because a branch is old. Keep essential branches protected, since checking open PRs and deleting a branch cannot happen in one atomic API operation.
 
-## 4. Audit a personal account
+## 4. Audit a personal account or organization
 
 The [fleet audit tool](../tools/fleet-audit/) discovers accessible, active, owned repositories and calls the same read-only audit for each one. It writes `reports/audit.json` locally, with restrictive file permissions. Git ignores that report.
 
-Run it locally or in a private controller. It refuses to run in a public GitHub Actions repository. A personal token can inspect its accessible owned repositories; an App installation token can inspect selected personal repositories in that installation. Neither can discover repositories outside its access.
+Run it locally or in a private controller. It refuses to run in a public GitHub Actions repository. Omit scope options to inspect the authenticated personal account, or pass `--org seventwo-studio` to inspect that organization. Personal credentials list repositories accessible in the selected scope; App installation tokens are limited to the selected repositories in their installation. Neither can discover repositories outside its access.
 
 This command gives an inventory at the time it runs. For recurring per-repository enforcement, install the caller workflows in each repository. For recurring central reporting, schedule the command in a private controller and retain its reports privately. Creating or cloning this public library does not enroll the rest of an account.
 

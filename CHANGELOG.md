@@ -2,7 +2,7 @@
 
 All three actions share one stable semantic version. Version tags are immutable.
 
-Current versions and automatically generated notes are published on the [GitHub Releases page](https://github.com/lucasilverentand/actions/releases). The entries below preserve the history through v1.1.0, before version selection became fully automatic.
+Current versions and automatically generated notes are published on the [GitHub Releases page](https://github.com/seventwo-studio/actions/releases). The entries below preserve the history through v1.1.0, before version selection became fully automatic.
 
 ## [1.1.0] - 2026-11-11
 

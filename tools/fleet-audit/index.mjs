@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { GitHub } from '../../lib/github.mjs';
 import { auditRepository } from '../../repository-audit/src/index.mjs';
-import { ownedRepositories } from './inventory.mjs';
+import { inventoryOptions, ownedRepositories } from './inventory.mjs';
 
 // Fleet findings belong on a local machine or in a private controller repository.
 const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || execFileSync('gh', ['auth', 'token'], { encoding: 'utf8' }).trim();
@@ -19,6 +19,7 @@ async function get(path) {
 }
 
 try {
+  const options = inventoryOptions(process.argv.slice(2));
   if (process.env.GITHUB_ACTIONS) {
     const controller = process.env.GITHUB_REPOSITORY;
     if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(controller ?? '') ||
@@ -28,17 +29,18 @@ try {
   }
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const results = [];
-  for (const repo of await ownedRepositories(get)) {
-      const api = new GitHub(token, repo.full_name);
-      try {
-        results.push({ repository: repo.full_name, findings: await auditRepository(api) });
-      } catch {
-        results.push({ repository: repo.full_name, findings: [{ level: 'error', rule: 'inspection', message: 'Repository inspection failed or is inaccessible.' }] });
-      }
+  for (const repo of await ownedRepositories(get, options)) {
+    const api = new GitHub(token, repo.full_name);
+    try {
+      results.push({ repository: repo.full_name, findings: await auditRepository(api) });
+    } catch {
+      results.push({ repository: repo.full_name, findings: [{ level: 'error', rule: 'inspection', message: 'Repository inspection failed or is inaccessible.' }] });
+    }
   }
-  await writeFile(join(directory, 'audit.json'), `${JSON.stringify({ generatedAt: new Date().toISOString(), repositories: results }, null, 2)}\n`, { mode: 0o600 });
+  const scope = options.organization ? { organization: options.organization } : { personal: true };
+  await writeFile(join(directory, 'audit.json'), `${JSON.stringify({ generatedAt: new Date().toISOString(), scope, repositories: results }, null, 2)}\n`, { mode: 0o600 });
   const failing = results.filter((r) => r.findings.some((f) => f.level === 'error')).length;
-  console.log(`Audited ${results.length} owned, active, non-fork repositories; ${failing} need attention. Details are in reports/audit.json.`);
+  console.log(`Audited ${results.length} selected, active, non-fork repositories; ${failing} need attention. Details are in reports/audit.json.`);
   if (failing) process.exitCode = 1;
 } catch {
   console.error('Fleet audit failed. Verify inventory access, token permissions, and API availability.');
