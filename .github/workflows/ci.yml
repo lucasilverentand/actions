@@ -31,10 +31,8 @@ jobs:
   pr-policy:
     name: PR policy
     if: github.event_name == 'pull_request'
+    permissions: {}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./pr-policy
+      - uses: lucasilverentand/actions/pr-policy@6a45074e36bc9e1a426846bb080a76d02ce9dd78 # reviewed implementation

@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: lucasilverentand/actions/repository-audit@0000000000000000000000000000000000000000 # v1.0.0
+      - uses: lucasilverentand/actions/repository-audit@6a45074e36bc9e1a426846bb080a76d02ce9dd78 # reviewed implementation
         with:
           # Store a repository-scoped, read-only audit credential in this repo.
           token: ${{ secrets.REPOSITORY_AUDIT_TOKEN }}
