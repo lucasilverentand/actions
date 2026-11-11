@@ -7365,7 +7365,7 @@ var require_dist = __commonJS({
   }
 });
 
-// src/github.mjs
+// lib/github.mjs
 var ApiError = class extends Error {
   constructor(status) {
     super(`GitHub API returned ${status}.`);
@@ -7422,7 +7422,7 @@ var GitHub = class {
   }
 };
 
-// src/workflows.mjs
+// repository-audit/src/workflows.mjs
 var import_yaml = __toESM(require_dist(), 1);
 function inspectWorkflow(source, path) {
   const findings = [];
@@ -7481,7 +7481,7 @@ function inspectWorkflow(source, path) {
   }
 }
 
-// src/runtime.mjs
+// lib/runtime.mjs
 import { appendFileSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 function input(name, fallback = "") {
@@ -7516,7 +7516,7 @@ function runIfMain(meta, fn) {
   }
 }
 
-// src/repository-audit.mjs
+// repository-audit/src/index.mjs
 async function auditRepository(api) {
   const findings = [];
   const add = (rule, message, level = "error") => findings.push({ rule, message, level });

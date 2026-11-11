@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);
 
-// src/runtime.mjs
+// lib/runtime.mjs
 import { appendFileSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 function input(name, fallback = "") {
@@ -37,7 +37,7 @@ function runIfMain(meta, fn) {
   }
 }
 
-// src/pr-policy.mjs
+// pr-policy/src/index.mjs
 var types = ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"];
 function checkPullRequest(pr, maxTitleLength = 100) {
   const findings = [];

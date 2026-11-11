@@ -1,6 +1,8 @@
 # Contributing
 
-Use Node.js 24 or newer. Install dependencies with `npm ci --ignore-scripts`, then run `npm test`, `npm run build`, and `npm run check`. Commit changed bundles in `dist/` alongside the source. CI checks that a fresh build produces the same files.
+Use Node.js 24 or newer. Install dependencies with `npm ci --ignore-scripts`, then run `npm run build`, `npm test`, and `npm run check`. Commit changed bundles in each action's `dist/` folder alongside its source. CI checks that a fresh build produces the same files.
+
+Each public action owns its `action.yml`, `README.md`, `src/`, `test/`, and generated `dist/`. Put shared API and runner helpers in `lib/`, standalone operator tools in `tools/`, and build checks in `scripts/`. Add adoption examples in `docs/examples/`. See the [repository map](../docs/architecture.md) for the dependency boundaries.
 
 Pull requests need a Conventional Commit title and meaningful `## Summary` and `## Testing` sections. Explain the outcome, verification, and any relevant limitations. Security-sensitive behavior needs tests covering rejection and race conditions.
 

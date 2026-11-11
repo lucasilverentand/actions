@@ -1,4 +1,4 @@
-import { event, input, integer, output, runIfMain, summary } from './runtime.mjs';
+import { event, input, integer, output, runIfMain, summary } from '../../lib/runtime.mjs';
 
 export const types = ['feat', 'fix', 'docs', 'style', 'refactor', 'perf', 'test', 'build', 'ci', 'chore', 'revert'];
 

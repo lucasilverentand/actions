@@ -1,13 +1,13 @@
 import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);
 
-// src/branch-cleanup.mjs
+// branch-cleanup/src/index.mjs
 import { execFile } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-// src/github.mjs
+// lib/github.mjs
 var ApiError = class extends Error {
   constructor(status) {
     super(`GitHub API returned ${status}.`);
@@ -64,7 +64,7 @@ var GitHub = class {
   }
 };
 
-// src/runtime.mjs
+// lib/runtime.mjs
 import { appendFileSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 function input(name, fallback = "") {
@@ -105,7 +105,7 @@ function runIfMain(meta, fn) {
   }
 }
 
-// src/branch-cleanup.mjs
+// branch-cleanup/src/index.mjs
 var execute = promisify(execFile);
 var keptNames = /* @__PURE__ */ new Set(["main", "master", "trunk", "dev", "develop", "development", "staging", "production", "gh-pages"]);
 var keptPrefixes = ["release/", "releases/", "hotfix/"];
