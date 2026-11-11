@@ -1,10 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bumpVersion, compareVersions, parseVersion, validateMetadata } from '../metadata.mjs';
+import { analyzeCommits, bumpVersion, compareVersions, parseVersion } from '../metadata.mjs';
 
-const changelog = '# Changelog\n\n## [1.2.3] - 2026-11-11\n\n- Handle empty input without throwing.\n\n## [1.2.2] - 2026-11-10\n\n- Earlier published behavior.\n';
-const pkg = { version: '1.2.3' };
-const lock = { version: '1.2.3', packages: { '': { version: '1.2.3' } } };
+const commits = (...messages) => messages.map((message) => ({ commit: { message } }));
 
 test('semantic bumps reset lower components and compare numerically', () => {
   assert.equal(bumpVersion('1.2.3', 'patch'), '1.2.4');
@@ -18,17 +16,17 @@ test('rejects malformed, prerelease, overflowing, and ambiguous versions', () =>
   assert.throws(() => bumpVersion('1.2.3', 'automatic'));
 });
 
-test('extracts only the current version release notes', () => {
-  const result = validateMetadata(pkg, lock, changelog);
-  assert.equal(result.tag, 'v1.2.3');
-  assert.match(result.notes, /Handle empty input/);
-  assert.doesNotMatch(result.notes, /Earlier published/);
+test('chooses patch for fixes and maintenance, minor for features, and the largest bump for a batch', () => {
+  for (const type of ['fix', 'perf', 'docs', 'style', 'refactor', 'test', 'build', 'ci', 'chore', 'revert']) {
+    assert.equal(analyzeCommits(commits(`${type}(policy): improve behavior`)), 'patch');
+  }
+  assert.equal(analyzeCommits(commits('fix: resolve a bug', 'feat: add automation', 'docs: describe the change')), 'minor');
 });
 
-test('rejects mismatched metadata, duplicate or misordered versions, and missing notes', () => {
-  assert.throws(() => validateMetadata(pkg, { ...lock, version: '1.2.2' }, changelog));
-  assert.throws(() => validateMetadata(pkg, { ...lock, packages: { '': { version: '1.2.2' } } }, changelog));
-  assert.throws(() => validateMetadata(pkg, lock, changelog.replace('[1.2.3]', '[1.2.4]')));
-  assert.throws(() => validateMetadata(pkg, lock, changelog.replace('[1.2.2]', '[1.2.3]')));
-  assert.throws(() => validateMetadata(pkg, lock, changelog.replace('- Handle empty input without throwing.', 'TODO')));
+test('recognizes breaking headers and footers and never silently ignores unknown commit formats', () => {
+  for (const message of ['feat!: simplify inputs', 'fix(api)!: remove a field', 'refactor: simplify inputs\n\nBREAKING CHANGE: remove a field', 'chore: simplify inputs\n\nBREAKING-CHANGE: remove a field']) {
+    assert.equal(analyzeCommits(commits(message, 'feat: add a feature')), 'major');
+  }
+  assert.equal(analyzeCommits([]), null);
+  assert.throws(() => analyzeCommits(commits('Unclassified change')));
 });

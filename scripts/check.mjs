@@ -3,9 +3,6 @@ import { resolve, dirname } from 'node:path';
 import assert from 'node:assert/strict';
 import { parse } from 'yaml';
 import { inspectWorkflow } from '../repository-audit/src/workflows.mjs';
-import { readMetadata } from './release/metadata.mjs';
-
-await readMetadata();
 
 for (const action of ['pr-policy', 'repository-audit', 'branch-cleanup']) {
   const path = `${action}/action.yml`;

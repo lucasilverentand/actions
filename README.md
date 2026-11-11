@@ -12,7 +12,7 @@ Start with the [walkthrough and setup guide](docs/getting-started.md), then copy
 
 For a read-only inventory across your personal repositories, use the separate [fleet audit tool](tools/fleet-audit/). It runs locally or in a private controller and writes a private, ignored report.
 
-All actions share one semantic version and [changelog](CHANGELOG.md). The [release guide](docs/releases.md) explains how to prepare a version PR and how CI publishes it after verification.
+All actions share one semantic version. CI calculates it from merged Conventional Commits and publishes [releases and notes](https://github.com/lucasilverentand/actions/releases) after verification. No local release command or version PR is needed. See the [release guide](docs/releases.md).
 
 ## Repository map
 
