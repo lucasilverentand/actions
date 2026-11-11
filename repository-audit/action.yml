@@ -1,0 +1,19 @@
+name: Repository audit
+description: Read-only checks for repository settings and unsafe workflow configuration.
+author: Luca Silverentand
+inputs:
+  token:
+    description: Repository-scoped token. Administrative checks require Administration read access.
+    required: true
+    default: ${{ github.token }}
+  fail-on-error:
+    description: Fail the job when an error or an unverified inspection is found.
+    default: 'true'
+outputs:
+  findings:
+    description: JSON array of findings. Keep this output in the consuming repository.
+  passed:
+    description: JSON boolean indicating whether all error-level checks pass.
+runs:
+  using: node24
+  main: ../dist/repository-audit.mjs

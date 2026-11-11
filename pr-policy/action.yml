@@ -1,0 +1,13 @@
+name: Pull request policy
+description: Check Conventional Commit titles and meaningful Summary and Testing sections.
+author: Luca Silverentand
+inputs:
+  max-title-length:
+    description: Maximum title length in Unicode code points (40–200).
+    default: '100'
+outputs:
+  valid:
+    description: JSON boolean indicating whether the title and body pass.
+runs:
+  using: node24
+  main: ../dist/pr-policy.mjs

@@ -1,0 +1,22 @@
+name: Branch cleanup
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: branch-cleanup
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: lucasilverentand/actions/branch-cleanup@0000000000000000000000000000000000000000 # v1.0.0
+        with:
+          # After reviewing previews, set false and grant contents: write above.
+          dry-run: 'true'
+          minimum-age-days: '30'
+          max-deletions: '10'

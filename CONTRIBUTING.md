@@ -1,0 +1,9 @@
+# Contributing
+
+Use Node.js 24 or newer. Install dependencies with `npm ci --ignore-scripts`, then run `npm test`, `npm run build`, and `npm run check`. Commit changed bundles in `dist/` alongside the source. CI checks that a fresh build produces the same files.
+
+Pull requests need a Conventional Commit title and meaningful `## Summary` and `## Testing` sections. Explain the outcome, verification, and any relevant limitations. Security-sensitive behavior needs tests covering rejection and race conditions.
+
+Keep public examples generic. Do not add repository inventories, private findings, credentials, internal hostnames, or exceptions belonging to a particular deployment.
+
+Release commits are immutable. Tag a verified commit with a new version, then update example pins to that commit in a follow-up change. Do not move published version tags. Review source and bundle changes together before releasing.

@@ -1,0 +1,22 @@
+{
+  "name": "repository-hygiene-actions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Reusable GitHub Actions for repository hygiene",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test",
+    "check": "node scripts/check.mjs"
+  },
+  "dependencies": {
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

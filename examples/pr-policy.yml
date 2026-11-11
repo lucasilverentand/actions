@@ -1,0 +1,12 @@
+name: PR policy
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+permissions: {}
+jobs:
+  pr-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Replace the all-zero SHA with the release commit documented in the README.
+      - uses: lucasilverentand/actions/pr-policy@0000000000000000000000000000000000000000 # v1.0.0

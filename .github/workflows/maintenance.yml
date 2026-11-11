@@ -1,0 +1,37 @@
+name: Maintenance
+on:
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: repository-maintenance
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./repository-audit
+        with:
+          token: ${{ secrets.REPOSITORY_AUDIT_TOKEN || github.token }}
+          # The default token cannot inspect every administrative setting.
+          # Full enforcement is enabled when a scoped audit token is configured.
+          fail-on-error: ${{ secrets.REPOSITORY_AUDIT_TOKEN != '' }}
+  branch-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./branch-cleanup
+        with:
+          dry-run: 'true'

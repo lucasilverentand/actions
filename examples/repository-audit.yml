@@ -1,0 +1,16 @@
+name: Repository audit
+on:
+  schedule:
+    - cron: '41 2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: lucasilverentand/actions/repository-audit@0000000000000000000000000000000000000000 # v1.0.0
+        with:
+          # Store a repository-scoped, read-only audit credential in this repo.
+          token: ${{ secrets.REPOSITORY_AUDIT_TOKEN }}

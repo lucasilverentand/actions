@@ -1,0 +1,23 @@
+# Security
+
+Report vulnerabilities through [GitHub private vulnerability reporting](https://github.com/lucasilverentand/actions/security/advisories/new). Include the affected commit, expected behavior, and reproduction steps. Do not open a public issue containing credentials or an exploit against a live repository.
+
+The latest release is supported. Consumers should pin reviewed release commits and review updates before adopting them.
+
+## Trust boundaries
+
+PR titles and bodies are parsed as data. The PR policy action does not check out code, need a token, execute PR text, or exempt bots. Run it on `pull_request`, with no secrets and no write permissions.
+
+The repository audit reads settings and default-branch workflow files through the API. It never executes those files or changes repository settings. Static checks cover the documented rules; they do not replace application security review or detect every way a workflow can invoke unsafe code.
+
+Branch deletion requires an explicit opt-in and a token with Contents write access. Cleanup refuses PR events and non-default-branch runs. It retains protected branches, branches with active rules, long-lived branches, and branches participating in open PRs. It requires a stale merged PR whose head SHA exactly matches the current tip. Deletion uses Git's expected-SHA lease, so a concurrent branch update prevents deletion.
+
+The API does not provide a transaction covering open PR checks and branch deletion. A PR can be opened after the final check. Use protection rules or an excluded prefix for branches that must always be retained. A run can partially complete before an API or network failure; the next preview will show the remaining candidates.
+
+## Credentials and reports
+
+Use repository-scoped GitHub App tokens where possible. Administrative audits need read access to settings unavailable to `GITHUB_TOKEN`. Keep those credentials in the consuming repository or a private controller. Do not give this public repository access to private repositories.
+
+The public source contains generic policy and code. Private repository inventories, audit findings, credentials, internal endpoints, and operational exceptions belong elsewhere. Fleet reports are ignored by Git and are written locally with restrictive permissions. Do not upload them to public workflow logs, issues, summaries, or artifacts.
+
+Action dependencies are bundled. Committed bundles must match the source build. CI checks this and audits the lockfile for known dependency advisories. Actions used by workflows are pinned to full commit SHAs; dependency updates still require review.
