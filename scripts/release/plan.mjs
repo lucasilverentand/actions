@@ -21,13 +21,15 @@ export async function planRelease(api, sha, { initialVersion = '1.0.0' } = {}) {
   parseVersion(initialVersion);
   const releases = await stableReleases(api);
   const latest = releases.sort((a, b) => compareVersions(b.tag_name.slice(1), a.tag_name.slice(1)))[0];
+  const baseSha = latest ? (await api.request('GET', `/commits/${encodeURIComponent(latest.tag_name)}`)).sha : null;
+  if (latest && !/^[a-f0-9]{40}$/.test(baseSha ?? '')) throw new Error('Cannot resolve the previous release commit.');
   const commits = [];
   let complete = false;
   let total;
   for (let page = 1; page <= 100; page++) {
     let batch;
     if (latest) {
-      const comparison = await api.request('GET', `/compare/${encodeURIComponent(latest.tag_name)}...${sha}?per_page=100&page=${page}`);
+      const comparison = await api.request('GET', `/compare/${baseSha}...${sha}?per_page=100&page=${page}`);
       if (!['ahead', 'identical'].includes(comparison.status) || !Number.isSafeInteger(comparison.total_commits) || comparison.total_commits < 0) {
         throw new Error('Release history is divergent or incomplete.');
       }

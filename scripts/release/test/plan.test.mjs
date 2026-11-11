@@ -18,6 +18,7 @@ function fixture(options = {}) {
     if (!path) return { default_branch: 'main' };
     if (path.startsWith('/git/ref/heads/')) return { object: { sha } };
     if (path.startsWith('/releases?')) return released ? [{ tag_name: 'v1.2.0' }] : options.releases ?? [{ tag_name: 'v1.1.0' }];
+    if (path.startsWith('/commits/v')) return { sha: 'b'.repeat(40) };
     if (path.startsWith('/compare/')) {
       if (released || options.identical) return { status: 'identical', total_commits: 0, commits: [] };
       const commits = options.commits ?? [commit('feat: automate version selection')];
@@ -69,6 +70,17 @@ test('includes every page of commits and uses a feature on a later page to selec
   const plan = await planRelease(api, sha);
   assert.equal(plan.version, '1.2.0');
   assert.equal(plan.notes.split('\n').filter((line) => line.startsWith('- ')).length, 101);
+});
+
+test('resolves the release tag once and uses an immutable base for every comparison', async () => {
+  const { api } = fixture();
+  const request = api.request;
+  const paths = [];
+  api.request = (method, path, body) => { paths.push(path); return request(method, path, body); };
+  await planRelease(api, sha);
+  assert.equal(paths.filter((path) => path.startsWith('/commits/v')).length, 1);
+  assert.ok(paths.find((path) => path.startsWith(`/compare/${'b'.repeat(40)}...${sha}`)));
+  assert.equal(paths.some((path) => path.startsWith('/compare/v')), false);
 });
 
 test('commit text is inert data and HTML is escaped in release notes', async () => {

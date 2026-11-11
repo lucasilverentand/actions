@@ -77,6 +77,19 @@ function runIfMain(meta, fn) {
 
 // lib/commit-policy.mjs
 var types = ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"];
+function checkSubject(subject, { maxSubjectLength = 100, maxSummaryLength = 72, allowScopes = true } = {}) {
+  if (typeof subject !== "string") return ["Provide a Conventional Commit subject."];
+  const findings = [];
+  const match = /^([a-z]+)(?:\(([a-zA-Z0-9][a-zA-Z0-9._/-]*)\))?(!)?: (\S(?:.*\S)?)$/u.exec(subject);
+  if (!match || !types.includes(match[1]) || /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/u.test(subject)) {
+    findings.push("Use a Conventional Commit subject, for example: fix: handle empty input.");
+  }
+  if ([...subject].length > maxSubjectLength) findings.push(`Keep the subject within ${maxSubjectLength} characters.`);
+  if (subject !== subject.trim()) findings.push("Remove whitespace around the subject.");
+  if (match && [...match[4]].length > maxSummaryLength) findings.push(`Keep the summary after the type within ${maxSummaryLength} characters.`);
+  if (match?.[2] && !allowScopes) findings.push("Scopes are disabled by this repository policy.");
+  return findings;
+}
 
 // scripts/release/metadata.mjs
 function parseVersion(version) {
@@ -110,7 +123,9 @@ function analyzeCommits(commits) {
   for (const commit of commits) {
     const message = commit.commit?.message;
     const header = /^([a-z]+)(?:\([^\r\n)]+\))?(!)?: ([^\r\n]+)/.exec(message ?? "");
-    if (!header || !types.includes(header[1])) throw new Error("A merged commit is not a supported Conventional Commit; review its title before releasing.");
+    if (!header || checkSubject(message.split(/\r?\n/)[0], { maxSubjectLength: Number.MAX_SAFE_INTEGER, maxSummaryLength: Number.MAX_SAFE_INTEGER }).length) {
+      throw new Error("A merged commit is not a supported Conventional Commit; review its title before releasing.");
+    }
     if (header[2] || /^BREAKING[ -]CHANGE:\s*\S/m.test(message)) level = "major";
     else if (header[1] === "feat" && level !== "major") level = "minor";
   }
@@ -137,13 +152,15 @@ async function planRelease(api, sha, { initialVersion = "1.0.0" } = {}) {
   parseVersion(initialVersion);
   const releases = await stableReleases(api);
   const latest = releases.sort((a, b) => compareVersions(b.tag_name.slice(1), a.tag_name.slice(1)))[0];
+  const baseSha = latest ? (await api.request("GET", `/commits/${encodeURIComponent(latest.tag_name)}`)).sha : null;
+  if (latest && !/^[a-f0-9]{40}$/.test(baseSha ?? "")) throw new Error("Cannot resolve the previous release commit.");
   const commits = [];
   let complete = false;
   let total;
   for (let page = 1; page <= 100; page++) {
     let batch;
     if (latest) {
-      const comparison = await api.request("GET", `/compare/${encodeURIComponent(latest.tag_name)}...${sha}?per_page=100&page=${page}`);
+      const comparison = await api.request("GET", `/compare/${baseSha}...${sha}?per_page=100&page=${page}`);
       if (!["ahead", "identical"].includes(comparison.status) || !Number.isSafeInteger(comparison.total_commits) || comparison.total_commits < 0) {
         throw new Error("Release history is divergent or incomplete.");
       }

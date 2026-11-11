@@ -11,6 +11,7 @@ function fixture(options = {}) {
     if (!path) return { default_branch: 'main', ...options.repo };
     if (path.startsWith('/git/ref/heads/')) return { object: { sha: options.head ?? sha } };
     if (path.startsWith('/releases?')) return options.released ? [{ tag_name: 'v1.0.0' }] : [];
+    if (path.startsWith('/commits/v')) return { sha };
     if (path.startsWith('/compare/')) return { status: 'identical', total_commits: 0, commits: [] };
     if (path.startsWith('/commits?')) return [{ sha, commit: { message: 'feat: introduce reusable automation' } }];
     throw Object.assign(new Error('Not found'), { status: 404 });

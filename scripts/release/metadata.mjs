@@ -1,4 +1,4 @@
-import { types } from '../../lib/commit-policy.mjs';
+import { checkSubject } from '../../lib/commit-policy.mjs';
 
 export function parseVersion(version) {
   const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version ?? '');
@@ -34,7 +34,9 @@ export function analyzeCommits(commits) {
   for (const commit of commits) {
     const message = commit.commit?.message;
     const header = /^([a-z]+)(?:\([^\r\n)]+\))?(!)?: ([^\r\n]+)/.exec(message ?? '');
-    if (!header || !types.includes(header[1])) throw new Error('A merged commit is not a supported Conventional Commit; review its title before releasing.');
+    if (!header || checkSubject(message.split(/\r?\n/)[0], { maxSubjectLength: Number.MAX_SAFE_INTEGER, maxSummaryLength: Number.MAX_SAFE_INTEGER }).length) {
+      throw new Error('A merged commit is not a supported Conventional Commit; review its title before releasing.');
+    }
     if (header[2] || /^BREAKING[ -]CHANGE:\s*\S/m.test(message)) level = 'major';
     else if (header[1] === 'feat' && level !== 'major') level = 'minor';
   }
