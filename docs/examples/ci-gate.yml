@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: seventwo-studio/actions/ci-gate@e7df504d6d30f8531f166183a7721cb71dc732d6
+      - uses: seventwo-studio/actions/ci-gate@517b07c39cd92a88e01a636f9fc372207b586fba # v1.4.0
         with:
           needs: ${{ toJSON(needs) }}
           required-jobs: '["tests"]'

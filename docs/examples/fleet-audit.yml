@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.AUTOMATION_RUNNER || '"ubuntu-latest"') }}
     timeout-minutes: 30
     steps:
-      - uses: seventwo-studio/actions/fleet-audit@e7df504d6d30f8531f166183a7721cb71dc732d6 # validated implementation
+      - uses: seventwo-studio/actions/fleet-audit@517b07c39cd92a88e01a636f9fc372207b586fba # v1.4.0
         id: audit
         with:
           token: ${{ secrets.FLEET_AUDIT_TOKEN }}
