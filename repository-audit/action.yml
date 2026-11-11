@@ -16,4 +16,4 @@ outputs:
     description: JSON boolean indicating whether all error-level checks pass.
 runs:
   using: node24
-  main: ../dist/repository-audit.mjs
+  main: dist/index.mjs

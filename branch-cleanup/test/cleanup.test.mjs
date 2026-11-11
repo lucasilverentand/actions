@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { cleanupBranches, retained, oldEnough } from '../src/branch-cleanup.mjs';
+import { cleanupBranches, retained, oldEnough } from '../src/index.mjs';
 
 const execute = promisify(execFile);
 const sha = 'a'.repeat(40);

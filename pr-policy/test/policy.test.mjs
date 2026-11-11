@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkPullRequest } from '../src/pr-policy.mjs';
+import { checkPullRequest } from '../src/index.mjs';
 
 const body = '## Summary\nHandle empty documents without throwing an exception.\n\n## Testing\nRan the parser unit tests, including empty input cases.';
 

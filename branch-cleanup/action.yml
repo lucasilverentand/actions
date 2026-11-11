@@ -25,4 +25,4 @@ outputs:
     description: Number of branches deleted.
 runs:
   using: node24
-  main: ../dist/branch-cleanup.mjs
+  main: dist/index.mjs

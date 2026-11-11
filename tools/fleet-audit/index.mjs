@@ -1,9 +1,9 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
-import { GitHub } from '../src/github.mjs';
-import { auditRepository } from '../src/repository-audit.mjs';
-import { ownedRepositories } from '../src/inventory.mjs';
+import { GitHub } from '../../lib/github.mjs';
+import { auditRepository } from '../../repository-audit/src/index.mjs';
+import { ownedRepositories } from './inventory.mjs';
 
 // Fleet findings belong on a local machine or in a private controller repository.
 const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || execFileSync('gh', ['auth', 'token'], { encoding: 'utf8' }).trim();

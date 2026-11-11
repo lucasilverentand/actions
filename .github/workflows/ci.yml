@@ -25,7 +25,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm test
       - run: npm run build
-      - run: git diff --exit-code -- dist
+      - run: git diff --exit-code -- pr-policy/dist repository-audit/dist branch-cleanup/dist
       - run: npm run check
       - run: npm audit --audit-level=moderate
   pr-policy:

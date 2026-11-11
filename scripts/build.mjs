@@ -1,8 +1,11 @@
 import { build } from 'esbuild';
 
 await build({
-  entryPoints: ['src/pr-policy.mjs', 'src/repository-audit.mjs', 'src/branch-cleanup.mjs'],
-  outdir: 'dist',
+  entryPoints: ['pr-policy', 'repository-audit', 'branch-cleanup'].map((action) => ({
+    in: `${action}/src/index.mjs`,
+    out: `${action}/dist/index`,
+  })),
+  outdir: '.',
   bundle: true,
   platform: 'node',
   target: 'node24',

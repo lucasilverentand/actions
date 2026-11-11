@@ -3,8 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { GitHub } from './github.mjs';
-import { boolean, escapeMarkdown, input, integer, output, runIfMain, summary } from './runtime.mjs';
+import { GitHub } from '../../lib/github.mjs';
+import { boolean, escapeMarkdown, input, integer, output, runIfMain, summary } from '../../lib/runtime.mjs';
 
 const execute = promisify(execFile);
 const keptNames = new Set(['main', 'master', 'trunk', 'dev', 'develop', 'development', 'staging', 'production', 'gh-pages']);

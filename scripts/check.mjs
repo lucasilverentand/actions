@@ -2,7 +2,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import assert from 'node:assert/strict';
 import { parse } from 'yaml';
-import { inspectWorkflow } from '../src/workflows.mjs';
+import { inspectWorkflow } from '../repository-audit/src/workflows.mjs';
 
 for (const action of ['pr-policy', 'repository-audit', 'branch-cleanup']) {
   const path = `${action}/action.yml`;
@@ -10,7 +10,7 @@ for (const action of ['pr-policy', 'repository-audit', 'branch-cleanup']) {
   assert.equal(metadata.runs.using, 'node24');
   assert.ok((await stat(resolve(dirname(path), metadata.runs.main))).isFile());
 }
-for (const directory of ['.github/workflows', 'examples']) {
+for (const directory of ['.github/workflows', 'docs/examples']) {
   for (const name of await readdir(directory)) {
     if (!/\.ya?ml$/.test(name)) continue;
     const path = `${directory}/${name}`;

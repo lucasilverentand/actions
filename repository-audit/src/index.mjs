@@ -1,6 +1,6 @@
-import { GitHub, ApiError } from './github.mjs';
+import { GitHub, ApiError } from '../../lib/github.mjs';
 import { inspectWorkflow } from './workflows.mjs';
-import { boolean, escapeMarkdown, input, output, runIfMain, summary } from './runtime.mjs';
+import { boolean, escapeMarkdown, input, output, runIfMain, summary } from '../../lib/runtime.mjs';
 
 export async function auditRepository(api) {
   const findings = [];
