@@ -23,7 +23,7 @@ Unclassified commit titles, divergent history, missing pages, and duplicate comm
 
 The Publish release job in [CI](../.github/workflows/ci.yml) depends on Verify. It runs only on main pushes or a manual CI dispatch on main. PR runs cannot publish. Only that job receives Contents write permission through GitHub's short-lived repository token. It needs no stored credential or permission to create or approve PRs.
 
-The publisher creates `vMAJOR.MINOR.PATCH` at the exact verified main SHA and generates notes from the merged commit titles, with their short SHAs. It does not commit version files, update main, or move existing tags. Full notes and the current version appear on the [GitHub Releases page](https://github.com/lucasilverentand/actions/releases).
+The publisher creates `vMAJOR.MINOR.PATCH` at the exact verified main SHA and generates notes from the merged commit titles, with their short SHAs. It does not commit version files, update main, or move existing tags. Full notes and the current version appear on the [GitHub Releases page](https://github.com/seventwo-studio/actions/releases).
 
 Rerunning an already-released main commit finds no new commits and does nothing. Tag pushes do not trigger the main-branch workflow, so release publication cannot create a loop.
 
@@ -40,7 +40,7 @@ The publisher serializes release jobs, while the main workflow can cancel older 
 Use the full commit SHA behind a reviewed release:
 
 ```yaml
-- uses: lucasilverentand/actions/pr-policy@<reviewed-release-commit>
+- uses: seventwo-studio/actions/pr-policy@<reviewed-release-commit>
 ```
 
 The same SHA versions all three action folders. Existing pins and releases remain valid. Release tags are protected against update and deletion; moving `v1` aliases are intentionally not part of this workflow.

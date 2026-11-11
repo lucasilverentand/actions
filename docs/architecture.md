@@ -15,7 +15,7 @@ branch-cleanup/              Same structure; includes deletion-lease tests
 lib/                         Shared GitHub API and Actions runtime helpers
   test/                      Shared helper tests
 tools/
-  fleet-audit/               Local/private CLI, inventory discovery, docs, and tests
+  fleet-audit/               Local/private CLI, scoped personal/org discovery, docs, and tests
 scripts/                     Build and repository validation utilities
   release/                   Automatic version planning, guarded publication, and tests
 test/                        Integration checks for the published action packages
@@ -34,7 +34,7 @@ package-lock.json            Locked dependency versions and integrity hashes
 
 ## How an action runs
 
-A consumer references `lucasilverentand/actions/pr-policy@<full-commit-sha>`. GitHub reads `pr-policy/action.yml`, which points to `pr-policy/dist/index.mjs`. That committed bundle includes the code and its JavaScript dependencies, so the consumer needs no npm installation or checkout of their repository.
+A consumer references `seventwo-studio/actions/pr-policy@<full-commit-sha>`. GitHub reads `pr-policy/action.yml`, which points to `pr-policy/dist/index.mjs`. That committed bundle includes the code and its JavaScript dependencies, so the consumer needs no npm installation or checkout of their repository.
 
 Maintainers edit `src/` and run the root build command. The build combines that source with shared `lib/` helpers and writes each action's bundle. Generated files are committed so GitHub can execute them directly; `.gitattributes` marks them as generated to reduce review clutter. They are still checked against a fresh build in CI.
 
@@ -59,3 +59,9 @@ The fleet command's current source path is `tools/fleet-audit/index.mjs`; the ol
 ## Private local files
 
 `reports/` holds locally generated fleet findings and is ignored by Git. `node_modules/` is also ignored and recreated from the lockfile. Neither belongs in the public source tree. The shared configuration in this repository must remain generic; account inventories, credentials, internal endpoints, and deployment-specific exceptions belong in consuming repositories or private tooling.
+
+## Organization ownership
+
+The canonical repository is `seventwo-studio/actions`. Use that owner in workflow references, documentation links, and Git remotes. A transfer preserves repository history, tags, and release commits; existing SHA pins can be reused under the new owner. Update callers explicitly rather than relying on redirects for action resolution.
+
+The fleet tool retains personal discovery by default and supports organization discovery with `--org ORGANIZATION`. Public library ownership does not grant it access to private organization repositories. Keep cross-repository audit credentials and findings in a private controller.

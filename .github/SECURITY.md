@@ -1,6 +1,6 @@
 # Security
 
-Report vulnerabilities through [GitHub private vulnerability reporting](https://github.com/lucasilverentand/actions/security/advisories/new). Include the affected commit, expected behavior, and reproduction steps. Do not open a public issue containing credentials or an exploit against a live repository.
+Report vulnerabilities through [GitHub private vulnerability reporting](https://github.com/seventwo-studio/actions/security/advisories/new). Include the affected commit, expected behavior, and reproduction steps. Do not open a public issue containing credentials or an exploit against a live repository.
 
 The latest release is supported. Consumers should pin reviewed release commits and review updates before adopting them.
 
