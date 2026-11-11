@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { copyFile, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, readdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -130,4 +130,24 @@ test('release bundle direct entry runs exactly once and dry-run performs no muta
     assert.match(result.notes, /feat: add portable checks/);
     assert.equal((await readFile(env.GITHUB_STEP_SUMMARY, 'utf8')).match(/^## /gm).length, 1);
   });
+});
+
+test('bundled entry points report their own diagnostic instead of a generic failure', async () => {
+  await fixture('pr-policy', async ({ directory, entry, env }) => {
+    const failure = await execute(process.execPath, [entry], { cwd: directory, env }).catch((error) => error);
+    assert.equal(failure.code, 1);
+    assert.match(failure.stderr, /^::error::Use this action only on pull_request events\.\r?\n$/);
+  });
+});
+
+test('scheduled and push examples accept a runner selector; PR-triggered examples stay GitHub-hosted', async () => {
+  const selector = "${{ fromJSON(vars.AUTOMATION_RUNNER || '\"ubuntu-latest\"') }}";
+  const directory = join(root, 'docs', 'examples');
+  for (const name of (await readdir(directory)).filter((file) => file.endsWith('.yml'))) {
+    const workflow = parse(await readFile(join(directory, name), 'utf8'));
+    const pullRequest = Object.keys(workflow.on).some((trigger) => trigger.startsWith('pull_request'));
+    for (const job of Object.values(workflow.jobs)) {
+      assert.equal(job['runs-on'], pullRequest ? 'ubuntu-latest' : selector, name);
+    }
+  }
 });

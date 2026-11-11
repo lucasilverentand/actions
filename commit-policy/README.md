@@ -6,7 +6,7 @@ For a squash-only workflow, use [PR policy](../pr-policy/) before merge and run 
 
 ## Message policy
 
-Subjects use `type(optional-scope)!: summary`. Allowed lowercase types are `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, and `revert`. The summary defaults to at most 72 Unicode code points and the complete subject to at most 100. Empty summaries, surrounding whitespace, line separators, control characters, and directional overrides fail.
+Subjects use `type(optional-scope)!: summary`. Allowed lowercase types are `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, and `revert`. The complete subject and the summary default to at most 100 Unicode code points; set `max-summary-length: '72'` for the conventional Git summary limit. Empty summaries, surrounding whitespace, line separators, control characters, and directional overrides fail.
 
 Set `allow-scopes: 'false'` when the repository requires subjects such as `fix: handle empty input`. A nonempty body must follow a blank line. Breaking-change markers and footers are accepted. Commit signatures are not required or evaluated.
 
@@ -29,7 +29,7 @@ The action paginates the [GitHub comparison API](https://docs.github.com/en/rest
 | Input | Default | Meaning |
 | --- | --- | --- |
 | `token` | `${{ github.token }}` | Repository credential with Contents read |
-| `max-summary-length` | `72` | Maximum Unicode code points after type/scope; 1–200 |
+| `max-summary-length` | `100` | Maximum Unicode code points after type/scope; 1–200 |
 | `max-subject-length` | `100` | Maximum complete subject; 40–200 |
 | `allow-scopes` | `true` | Permit optional Conventional Commit scopes |
 | `max-commits` | `250` | Maximum complete comparison size; 1–1000 |

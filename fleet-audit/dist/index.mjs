@@ -7404,10 +7404,20 @@ function summary(title, lines) {
 ${lines.join("\n")}
 `);
 }
+function escapeMarkdown(value) {
+  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "&#124;").replaceAll("\r", " ").replaceAll("\n", " ").replaceAll("`", "&#96;").replaceAll("[", "&#91;").replaceAll("]", "&#93;");
+}
+var genericFailure = "Action failed. Check its configuration, token permissions, and GitHub API availability.";
+var platformErrorKeys = ["code", "errno", "syscall", "path", "cmd", "stdout", "stderr", "cause", "errors"];
+function failureMessage(error) {
+  const own = error instanceof Error && (Object.getPrototypeOf(error) === Error.prototype || error.name === "ApiError") && !platformErrorKeys.some((key) => Object.hasOwn(error, key));
+  const message = own ? String(error.message).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/gu, " ").trim().slice(0, 300) : "";
+  return `::error::${(message || genericFailure).replaceAll("%", "%25")}`;
+}
 function runIfMain(meta, fn) {
   if (process.argv[1] && meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
-    fn().catch(() => {
-      console.error("Action failed. Check its configuration, token permissions, and GitHub API availability.");
+    fn().catch((error) => {
+      console.error(failureMessage(error));
       process.exitCode = 1;
     });
   }
@@ -7437,6 +7447,7 @@ function configureProxy(env = process.env, configure = http.setGlobalProxyFromEn
 var ApiError = class extends Error {
   constructor(status) {
     super(`GitHub API returned ${status}.`);
+    this.name = "ApiError";
     this.status = status;
   }
 };
@@ -7541,8 +7552,8 @@ function inspectWorkflow(source, path) {
       if (job.uses) inspectUses(job.uses);
       else if (!job["runs-on"] || !Array.isArray(job.steps) || !job.steps.length) throw new Error("Invalid executable job.");
       if (job["secrets"] === "inherit") add("workflow-secrets", "Pass only the secrets a reusable workflow needs.");
-      if (job["runs-on"] && (!Number.isFinite(job["timeout-minutes"]) || job["timeout-minutes"] < 1 || job["timeout-minutes"] > 60)) {
-        add("workflow-timeout", "Set a job timeout between 1 and 60 minutes.");
+      if (job["runs-on"] && (!Number.isFinite(job["timeout-minutes"]) || job["timeout-minutes"] < 1)) {
+        add("workflow-timeout", "Set an explicit job timeout of at least 1 minute.");
       }
       if (triggers.some((t) => ["pull_request", "pull_request_target"].includes(t)) && JSON.stringify(job["runs-on"] ?? "").includes("self-hosted") && !trustedPullRequestGate(job.if, triggers)) {
         add("workflow-runner", "Use GitHub-hosted PR runners or an explicit job gate that excludes fork PRs from persistent runners.");
@@ -7859,6 +7870,26 @@ function reportCounts(report) {
     errors: report.repositories.reduce((total, repo) => total + repo.findings.filter((finding) => finding.level === "error").length, 0)
   };
 }
+function reportSummary(report, maxLines = 300) {
+  const rank = (repo) => repo.findings.some((finding) => finding.level === "error") ? 0 : 1;
+  const flagged = report.repositories.filter((repo) => repo.findings.length).sort((a, b) => rank(a) - rank(b) || a.repository.localeCompare(b.repository));
+  const lines = [];
+  let omitted = 0;
+  for (const repo of flagged) {
+    const findings = [...repo.findings].sort((a, b) => (a.level === "error" ? 0 : 1) - (b.level === "error" ? 0 : 1));
+    for (const [index, finding] of findings.entries()) {
+      if (lines.length >= maxLines) {
+        omitted += findings.length - index;
+        break;
+      }
+      if (index === 0) lines.push(`- **${escapeMarkdown(repo.repository)}**`);
+      const path = finding.path ? ` (${escapeMarkdown(finding.path)})` : "";
+      lines.push(`  - ${escapeMarkdown(finding.level)}: ${escapeMarkdown(finding.message)}${path}`);
+    }
+  }
+  if (omitted) lines.push("", `${omitted} more findings are only in the private report.`);
+  return lines;
+}
 async function writePrivateReport(directory, report) {
   await mkdir(directory, { recursive: true, mode: 448 });
   const info = await lstat(directory);
@@ -7906,7 +7937,10 @@ async function main() {
   output("passed", counts.errors === 0);
   summary("Fleet audit", [
     `Audited ${counts.repositories} repositories; ${counts.failing} need attention (${counts.errors} errors).`,
-    "Detailed findings are in the report-path output. Retain that report only in this private controller."
+    "",
+    ...reportSummary(report),
+    "",
+    "The report-path output holds the complete JSON report. Retain it only in this private controller."
   ]);
   console.log(`Audited ${counts.repositories} repositories; ${counts.errors} errors. See the private report.`);
   if (failOnError && counts.errors) process.exitCode = 1;

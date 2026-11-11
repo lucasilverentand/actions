@@ -7,7 +7,7 @@ inputs:
     default: ${{ github.token }}
   max-summary-length:
     description: Maximum length after the type and optional scope (1–200 Unicode code points).
-    default: '72'
+    default: '100'
   max-subject-length:
     description: Maximum complete subject length (40–200 Unicode code points).
     default: '100'

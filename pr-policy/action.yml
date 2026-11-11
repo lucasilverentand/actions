@@ -7,7 +7,7 @@ inputs:
     default: '100'
   max-summary-length:
     description: Maximum summary length after the type and optional scope (1–200 Unicode code points).
-    default: '72'
+    default: '100'
   allow-scopes:
     description: Allow optional Conventional Commit scopes.
     default: 'true'

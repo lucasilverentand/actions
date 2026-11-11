@@ -7,6 +7,7 @@ permissions: {}
 jobs:
   # Replace this demonstration job with the repository's real suite jobs.
   tests:
+    # PR-triggered: keep GitHub-hosted for repositories that accept fork PRs. See docs/runner-compatibility.md.
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

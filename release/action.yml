@@ -19,6 +19,8 @@ outputs:
     description: Whether unreleased commits require a version.
   created:
     description: Whether this run published a release.
+  superseded:
+    description: Whether a newer default-branch commit took over; nothing was written.
   version:
     description: Planned stable semantic version, or empty for no change.
   tag:

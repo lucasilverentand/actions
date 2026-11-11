@@ -19,7 +19,7 @@ Archived, disabled, and fork repositories are excluded. Inventory failures stop 
 
 ## Results and retention
 
-`report-path` is an absolute path to a JSON report in a unique directory under the runner's temporary directory. On POSIX hosts, the directory uses mode `0700` and the file mode `0600`. Windows relies on the runner account's temporary-directory ACLs; use an isolated runner account whose temporary files are inaccessible to other users. Findings and repository names stay in that file; logs and job summaries contain totals only.
+`report-path` is an absolute path to a JSON report in a unique directory under the runner's temporary directory. On POSIX hosts, the directory uses mode `0700` and the file mode `0600`. Windows relies on the runner account's temporary-directory ACLs; use an isolated runner account whose temporary files are inaccessible to other users. Logs contain totals only. After the second private-controller check, the job summary lists each repository that needs attention with its findings, errors first, capped at 300 lines; the file holds the complete report. The summary follows the controller's run-log retention and access, not the artifact's.
 
 The `repository-count` and `error-count` outputs are numbers. `passed` is a JSON boolean and remains false for error findings even when `fail-on-error` is false. The report includes its generation time, selected scope, and each inspected repository's findings.
 

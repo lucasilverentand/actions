@@ -14,7 +14,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   compatibility:
-    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    # Dispatch against any branch to verify a change on a private pool before merge.
+    # Dispatch requires write access, which can already run branch code through push workflows.
     runs-on: ${{ fromJSON(inputs.runner) }}
     timeout-minutes: 15
     steps:

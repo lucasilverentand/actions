@@ -6,7 +6,8 @@ permissions:
   contents: read
 jobs:
   commit-policy:
-    runs-on: ubuntu-latest
+    # Unset AUTOMATION_RUNNER uses GitHub-hosted Ubuntu; set it to a JSON runner selector for your own runners.
+    runs-on: ${{ fromJSON(vars.AUTOMATION_RUNNER || '"ubuntu-latest"') }}
     timeout-minutes: 5
     steps:
       # Replace with the reviewed implementation SHA after publication.

@@ -37,10 +37,17 @@ function summary(title, lines) {
 ${lines.join("\n")}
 `);
 }
+var genericFailure = "Action failed. Check its configuration, token permissions, and GitHub API availability.";
+var platformErrorKeys = ["code", "errno", "syscall", "path", "cmd", "stdout", "stderr", "cause", "errors"];
+function failureMessage(error) {
+  const own = error instanceof Error && (Object.getPrototypeOf(error) === Error.prototype || error.name === "ApiError") && !platformErrorKeys.some((key) => Object.hasOwn(error, key));
+  const message = own ? String(error.message).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/gu, " ").trim().slice(0, 300) : "";
+  return `::error::${(message || genericFailure).replaceAll("%", "%25")}`;
+}
 function runIfMain(meta, fn) {
   if (process.argv[1] && meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
-    fn().catch(() => {
-      console.error("Action failed. Check its configuration, token permissions, and GitHub API availability.");
+    fn().catch((error) => {
+      console.error(failureMessage(error));
       process.exitCode = 1;
     });
   }
@@ -48,7 +55,7 @@ function runIfMain(meta, fn) {
 
 // lib/commit-policy.mjs
 var types = ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"];
-function checkSubject(subject, { maxSubjectLength = 100, maxSummaryLength = 72, allowScopes = true } = {}) {
+function checkSubject(subject, { maxSubjectLength = 100, maxSummaryLength = 100, allowScopes = true } = {}) {
   if (typeof subject !== "string") return ["Provide a Conventional Commit subject."];
   const findings = [];
   const match = /^([a-z]+)(?:\(([a-zA-Z0-9][a-zA-Z0-9._/-]*)\))?(!)?: (\S(?:.*\S)?)$/u.exec(subject);
@@ -126,7 +133,7 @@ async function main() {
   const pr = event().pull_request;
   if (!pr) throw new Error("Missing pull request.");
   const findings = checkPullRequest(pr, integer(input("max-title-length", "100"), 40, 200), {
-    maxSummaryLength: integer(input("max-summary-length", "72"), 1, 200),
+    maxSummaryLength: integer(input("max-summary-length", "100"), 1, 200),
     allowScopes: boolean(input("allow-scopes", "true")),
     requireIssueReference: boolean(input("require-issue-reference", "false")),
     issuePrefixes: parseIssuePrefixes(input("issue-prefixes", "[]"))

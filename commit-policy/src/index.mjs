@@ -68,7 +68,7 @@ export async function main() {
   const commits = await readCommits(api, range, integer(input('max-commits', '250'), 1, 1000));
   const findings = inspectCommits(commits, {
     maxSubjectLength: integer(input('max-subject-length', '100'), 40, 200),
-    maxSummaryLength: integer(input('max-summary-length', '72'), 1, 200),
+    maxSummaryLength: integer(input('max-summary-length', '100'), 1, 200),
     allowScopes: boolean(input('allow-scopes', 'true')),
   });
   output('valid', findings.length === 0);

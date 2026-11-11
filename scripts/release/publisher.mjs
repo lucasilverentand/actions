@@ -26,6 +26,15 @@ export class ReleaseApi {
   }
 }
 
+// A newer descendant on the default branch includes this commit; its own run plans and publishes it.
+// Rewritten or unrelated history still fails, and no tag or release is written either way.
+export async function supersededBy(api, sha, current) {
+  if (!/^[a-f0-9]{40}$/.test(current ?? '')) throw new Error('Cannot resolve the current default-branch commit.');
+  const comparison = await api.request('GET', `/compare/${sha}...${current}?per_page=1`);
+  if (comparison.status !== 'ahead') throw new Error('Default branch no longer contains this commit; review its history before releasing.');
+  return true;
+}
+
 async function optional(api, path) {
   try { return await api.request('GET', path); }
   catch (error) { if (error.status === 404) return null; throw error; }
@@ -43,7 +52,9 @@ export async function publishRelease(api, metadata, context) {
   if (context.ref !== `refs/heads/${repo.default_branch}`) throw new Error('Release only from the default branch.');
   const branchPath = `/git/ref/heads/${encodeURIComponent(repo.default_branch)}`;
   const head = await api.request('GET', branchPath);
-  if (head.object.sha !== context.sha) throw new Error('Default branch advanced; release from a fresh verified run.');
+  if (head.object.sha !== context.sha && await supersededBy(api, context.sha, head.object.sha)) {
+    return { created: false, superseded: true, tag, url: '' };
+  }
 
   for (const release of await stableReleases(api)) {
     if (compareVersions(version, release.tag_name.slice(1)) < 0) throw new Error('Version is older than a published stable release.');
@@ -68,7 +79,10 @@ export async function publishRelease(api, metadata, context) {
     return { created: false, tag, url: existing.html_url };
   }
   // Recheck after inventory requests, before the first mutation.
-  if ((await api.request('GET', branchPath)).object.sha !== context.sha) throw new Error('Default branch advanced during release preparation.');
+  const latest = (await api.request('GET', branchPath)).object.sha;
+  if (latest !== context.sha && await supersededBy(api, context.sha, latest)) {
+    return { created: false, superseded: true, tag, url: '' };
+  }
   if (!ref) await api.request('POST', '/git/refs', { ref: `refs/tags/${tag}`, sha: context.sha });
   const release = await api.request('POST', '/releases', {
     tag_name: tag, target_commitish: context.sha, name: tag, body: notes,

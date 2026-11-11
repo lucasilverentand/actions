@@ -13,4 +13,4 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: seventwo-studio/actions/pr-policy@e7df504d6d30f8531f166183a7721cb71dc732d6 # reviewed implementation
+      - uses: seventwo-studio/actions/pr-policy@defcc7507a747d88e8fd2c29f765e6a263db3488 # v1.3.0

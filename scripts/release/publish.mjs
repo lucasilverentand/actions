@@ -16,6 +16,12 @@ export async function main() {
     return;
   }
   const result = await publishRelease(api, metadata, context);
+  if (result.superseded) {
+    const message = 'Superseded: the default branch moved to a newer commit; that run publishes this commit.';
+    console.log(message);
+    if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, `## Release\n\n${message}\n`);
+    return;
+  }
   console.log(`${result.tag}: ${result.created ? 'published' : 'already published; no changes'}.`);
   if (process.env.GITHUB_STEP_SUMMARY) {
     await appendFile(process.env.GITHUB_STEP_SUMMARY, `## Release\n\n${result.tag}: ${result.created ? 'published' : 'already published; no changes'}.\n`);

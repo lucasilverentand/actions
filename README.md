@@ -13,7 +13,7 @@ Reusable GitHub Actions for review quality, CI gates, repository checks, release
 | [CI gate](ci-gate/) | Requires upstream jobs to succeed and writes a source-specific receipt | No token or checkout |
 | [Release](release/) | Previews or publishes immutable semantic versions after verification | Read-only preview; Contents write to publish |
 
-Start with the [walkthrough and setup guide](docs/getting-started.md), then copy the workflows in [docs/examples/](docs/examples/) into a consuming repository. Examples pin reviewed implementation commits. Review updates and keep full commit pins.
+Start with the [walkthrough and setup guide](docs/getting-started.md), then copy the workflows in [docs/examples/](docs/examples/) into a consuming repository. Examples pin the commit of a published release. Review updates and keep full commit pins.
 
 For a read-only inventory across your personal or organization repositories, use the separate [fleet audit tool](tools/fleet-audit/). It runs locally or in a private controller and writes a private, ignored report.
 

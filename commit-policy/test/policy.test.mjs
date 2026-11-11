@@ -13,11 +13,13 @@ test('validates commit subjects, blank body separators, scope, and Unicode lengt
   for (const message of ['fix: handle empty input', 'feat!: replace old API\n\nBREAKING CHANGE: the old API was removed', 'docs: explain setup\r\n\r\nDocument supported runtimes.']) {
     assert.deepEqual(checkCommitMessage(message), []);
   }
-  for (const message of ['Fix: upper case type', 'fix: ', 'fixup! fix: handle input', 'fix: handle input\nMissing separator', 'fix: unsafe\u202e subject', `fix: ${'a'.repeat(73)}`]) {
+  for (const message of ['Fix: upper case type', 'fix: ', 'fixup! fix: handle input', 'fix: handle input\nMissing separator', 'fix: unsafe\u202e subject', `fix: ${'a'.repeat(96)}`]) {
     assert.ok(checkCommitMessage(message).length, message);
   }
   assert.deepEqual(checkCommitMessage(`fix: ${'😀'.repeat(72)}`), []);
   assert.ok(checkCommitMessage('fix(core): handle input', { allowScopes: false }).length);
+  assert.deepEqual(checkCommitMessage(`fix: ${'a'.repeat(73)}`), []);
+  assert.ok(checkCommitMessage(`fix: ${'a'.repeat(73)}`, { maxSummaryLength: 72 }).length);
 });
 
 test('selects immutable event SHAs and rejects unsupported or mismatched events', () => {

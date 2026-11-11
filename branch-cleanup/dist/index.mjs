@@ -27,6 +27,7 @@ function configureProxy(env = process.env, configure = http.setGlobalProxyFromEn
 var ApiError = class extends Error {
   constructor(status) {
     super(`GitHub API returned ${status}.`);
+    this.name = "ApiError";
     this.status = status;
   }
 };
@@ -141,10 +142,17 @@ ${lines.join("\n")}
 function escapeMarkdown(value) {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "&#124;").replaceAll("\r", " ").replaceAll("\n", " ").replaceAll("`", "&#96;").replaceAll("[", "&#91;").replaceAll("]", "&#93;");
 }
+var genericFailure = "Action failed. Check its configuration, token permissions, and GitHub API availability.";
+var platformErrorKeys = ["code", "errno", "syscall", "path", "cmd", "stdout", "stderr", "cause", "errors"];
+function failureMessage(error) {
+  const own = error instanceof Error && (Object.getPrototypeOf(error) === Error.prototype || error.name === "ApiError") && !platformErrorKeys.some((key) => Object.hasOwn(error, key));
+  const message = own ? String(error.message).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/gu, " ").trim().slice(0, 300) : "";
+  return `::error::${(message || genericFailure).replaceAll("%", "%25")}`;
+}
 function runIfMain(meta, fn) {
   if (process.argv[1] && meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
-    fn().catch(() => {
-      console.error("Action failed. Check its configuration, token permissions, and GitHub API availability.");
+    fn().catch((error) => {
+      console.error(failureMessage(error));
       process.exitCode = 1;
     });
   }

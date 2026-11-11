@@ -22,6 +22,13 @@ test('flags privileged checkout, self hosted PR jobs, broad token rights, and mi
   assert.ok(rules(safe.replace('ubuntu-latest', 'self-hosted')).includes('workflow-runner'));
   assert.ok(rules(safe.replace('{contents: read}', 'write-all')).includes('workflow-write-all'));
   assert.ok(rules(safe.replace('    timeout-minutes: 10\n', '')).includes('workflow-timeout'));
+  for (const value of ['0', '-5', "'10'"]) {
+    assert.ok(rules(safe.replace('timeout-minutes: 10', `timeout-minutes: ${value}`)).includes('workflow-timeout'), value);
+  }
+  // Long native builds, archives and uploads keep an explicit bound without a short policy cap.
+  for (const value of ['61', '180', '720']) {
+    assert.deepEqual(rules(safe.replace('timeout-minutes: 10', `timeout-minutes: ${value}`)), [], value);
+  }
 });
 test('rejects invalid YAML, duplicate keys, and malformed workflow structures', () => {
   for (const value of ['jobs: [', 'jobs: {}\njobs: {}', '42', 'jobs: {test: null}']) {

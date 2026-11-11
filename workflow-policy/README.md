@@ -16,7 +16,7 @@ The ordinary `pull_request` event is sufficient for repositories where the workf
 
 ## Checks
 
-The shared inspector requires literal commit pins for external actions and reusable workflows, digest pins for action/job/service containers, explicit token permissions, job timeouts, checkout without persisted credentials, and explicit secrets for reusable workflows. It rejects direct event/input expression interpolation into scripts, checkout on privileged triggers, malformed workflow structures, duplicate YAML keys, unsupported tags, and excessive aliases.
+The shared inspector requires literal commit pins for external actions and reusable workflows, digest pins for action/job/service containers, explicit token permissions, explicit job timeouts with no fixed maximum, checkout without persisted credentials, and explicit secrets for reusable workflows. It rejects direct event/input expression interpolation into scripts, checkout on privileged triggers, malformed workflow structures, duplicate YAML keys, unsupported tags, and excessive aliases.
 
 Persistent self-hosted runners in PR workflows need a narrowly recognized job condition excluding forks: `github.event.pull_request.head.repo.full_name == github.repository`. For workflows without `pull_request_target`, `github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository` is also accepted. More complex expressions remain flagged for review. Same-repository PR authors must be trusted with the runner; the linter does not prove expression safety or runner isolation and cannot resolve dynamic/custom runner labels.
 

@@ -10,6 +10,12 @@ The repository CI runs the Node 24 test suite and bundle checks on `ubuntu-lates
 
 A passing matrix verifies those particular runner images. It does not prove compatibility with every custom image, CPU architecture, proxy, or credential setup. Check the PR's current CI results before adopting its immutable pin.
 
+## Choosing a runner
+
+The scheduled, manual and default-branch push examples read an optional `AUTOMATION_RUNNER` repository or organization variable. Leave it unset for GitHub-hosted `ubuntu-latest`. Set it to a JSON runner selector to use your own runners, for example `["self-hosted", "linux"]` or `{"group": "private-runners", "labels": ["linux"]}`. One variable switches every copied workflow without editing it.
+
+PR-triggered examples (PR policy, workflow policy and the CI gate) stay on GitHub-hosted runners. A fork PR can change the workflow it runs, so persistent runners need more than a runner choice. In a private repository without fork PRs, you can use the same selector there. Keep self-hosted runner groups unavailable to public repositories, which is GitHub's default. The workflow linter cannot resolve a runner chosen through a variable.
+
 ## Self-hosted runners
 
 Use a current Actions runner on a supported operating system and architecture with a working bundled Node 24 runtime. On Linux, the operating system's C library and other runtime libraries must support that runner's Node binary. Changing the Node version on `PATH` does not repair an incompatible bundled action runtime. GitHub maintains the supported platforms and network requirements in its [self-hosted runner reference](https://docs.github.com/en/actions/reference/runners/self-hosted-runners).

@@ -27,8 +27,9 @@ export function inspectWorkflow(source, path) {
       if (job.uses) inspectUses(job.uses);
       else if (!job['runs-on'] || !Array.isArray(job.steps) || !job.steps.length) throw new Error('Invalid executable job.');
       if (job['secrets'] === 'inherit') add('workflow-secrets', 'Pass only the secrets a reusable workflow needs.');
-      if (job['runs-on'] && (!Number.isFinite(job['timeout-minutes']) || job['timeout-minutes'] < 1 || job['timeout-minutes'] > 60)) {
-        add('workflow-timeout', 'Set a job timeout between 1 and 60 minutes.');
+      // Require an explicit bound, not a short one: long native builds and archives are legitimate.
+      if (job['runs-on'] && (!Number.isFinite(job['timeout-minutes']) || job['timeout-minutes'] < 1)) {
+        add('workflow-timeout', 'Set an explicit job timeout of at least 1 minute.');
       }
       if (triggers.some((t) => ['pull_request', 'pull_request_target'].includes(t)) &&
           JSON.stringify(job['runs-on'] ?? '').includes('self-hosted') && !trustedPullRequestGate(job.if, triggers)) {

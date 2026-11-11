@@ -5,6 +5,7 @@ import { mapConcurrent } from '../../lib/concurrency.mjs';
 import { auditRepository } from '../../repository-audit/src/audit.mjs';
 import { ownedRepositories } from './inventory.mjs';
 import { configureProxy } from '../../lib/network.mjs';
+import { escapeMarkdown } from '../../lib/runtime.mjs';
 
 export function inventoryReader(token, fetcher = fetch) {
   configureProxy();
@@ -61,6 +62,27 @@ export function reportCounts(report) {
     failing: report.repositories.filter((repo) => repo.findings.some((finding) => finding.level === 'error')).length,
     errors: report.repositories.reduce((total, repo) => total + repo.findings.filter((finding) => finding.level === 'error').length, 0),
   };
+}
+
+// Job summary lines for the verified-private controller: repositories needing attention and why.
+// Errors come first; the line cap keeps large fleets within GitHub's summary size limit.
+export function reportSummary(report, maxLines = 300) {
+  const rank = (repo) => repo.findings.some((finding) => finding.level === 'error') ? 0 : 1;
+  const flagged = report.repositories.filter((repo) => repo.findings.length)
+    .sort((a, b) => rank(a) - rank(b) || a.repository.localeCompare(b.repository));
+  const lines = [];
+  let omitted = 0;
+  for (const repo of flagged) {
+    const findings = [...repo.findings].sort((a, b) => (a.level === 'error' ? 0 : 1) - (b.level === 'error' ? 0 : 1));
+    for (const [index, finding] of findings.entries()) {
+      if (lines.length >= maxLines) { omitted += findings.length - index; break; }
+      if (index === 0) lines.push(`- **${escapeMarkdown(repo.repository)}**`);
+      const path = finding.path ? ` (${escapeMarkdown(finding.path)})` : '';
+      lines.push(`  - ${escapeMarkdown(finding.level)}: ${escapeMarkdown(finding.message)}${path}`);
+    }
+  }
+  if (omitted) lines.push('', `${omitted} more findings are only in the private report.`);
+  return lines;
 }
 
 export async function writePrivateReport(directory, report) {

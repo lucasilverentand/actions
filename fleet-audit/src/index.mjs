@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { boolean, input, integer, output, runIfMain, summary } from '../../lib/runtime.mjs';
 import {
-  auditFleet, inventoryReader, privateController, reportCounts, repositoryInspector, writePrivateReport,
+  auditFleet, inventoryReader, privateController, reportCounts, reportSummary, repositoryInspector, writePrivateReport,
 } from '../../tools/fleet-audit/core.mjs';
 import { inventoryOptions } from '../../tools/fleet-audit/inventory.mjs';
 
@@ -35,10 +35,12 @@ export async function main() {
   output('repository-count', counts.repositories);
   output('error-count', counts.errors);
   output('passed', counts.errors === 0);
-  // Findings and repository identities remain in the private report, never the summary or log.
+  // The summary is written only after the second private-controller check, so it shares the report's
+  // audience. Logs keep totals only.
   summary('Fleet audit', [
-    `Audited ${counts.repositories} repositories; ${counts.failing} need attention (${counts.errors} errors).`,
-    'Detailed findings are in the report-path output. Retain that report only in this private controller.',
+    `Audited ${counts.repositories} repositories; ${counts.failing} need attention (${counts.errors} errors).`, '',
+    ...reportSummary(report),
+    '', 'The report-path output holds the complete JSON report. Retain it only in this private controller.',
   ]);
   console.log(`Audited ${counts.repositories} repositories; ${counts.errors} errors. See the private report.`);
   if (failOnError && counts.errors) process.exitCode = 1;

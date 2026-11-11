@@ -7385,6 +7385,7 @@ function configureProxy(env = process.env, configure = http.setGlobalProxyFromEn
 var ApiError = class extends Error {
   constructor(status) {
     super(`GitHub API returned ${status}.`);
+    this.name = "ApiError";
     this.status = status;
   }
 };
@@ -7473,10 +7474,17 @@ ${lines.join("\n")}
 function escapeMarkdown(value) {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "&#124;").replaceAll("\r", " ").replaceAll("\n", " ").replaceAll("`", "&#96;").replaceAll("[", "&#91;").replaceAll("]", "&#93;");
 }
+var genericFailure = "Action failed. Check its configuration, token permissions, and GitHub API availability.";
+var platformErrorKeys = ["code", "errno", "syscall", "path", "cmd", "stdout", "stderr", "cause", "errors"];
+function failureMessage(error) {
+  const own = error instanceof Error && (Object.getPrototypeOf(error) === Error.prototype || error.name === "ApiError") && !platformErrorKeys.some((key) => Object.hasOwn(error, key));
+  const message = own ? String(error.message).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/gu, " ").trim().slice(0, 300) : "";
+  return `::error::${(message || genericFailure).replaceAll("%", "%25")}`;
+}
 function runIfMain(meta, fn) {
   if (process.argv[1] && meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
-    fn().catch(() => {
-      console.error("Action failed. Check its configuration, token permissions, and GitHub API availability.");
+    fn().catch((error) => {
+      console.error(failureMessage(error));
       process.exitCode = 1;
     });
   }
@@ -7509,8 +7517,8 @@ function inspectWorkflow(source, path) {
       if (job.uses) inspectUses(job.uses);
       else if (!job["runs-on"] || !Array.isArray(job.steps) || !job.steps.length) throw new Error("Invalid executable job.");
       if (job["secrets"] === "inherit") add("workflow-secrets", "Pass only the secrets a reusable workflow needs.");
-      if (job["runs-on"] && (!Number.isFinite(job["timeout-minutes"]) || job["timeout-minutes"] < 1 || job["timeout-minutes"] > 60)) {
-        add("workflow-timeout", "Set a job timeout between 1 and 60 minutes.");
+      if (job["runs-on"] && (!Number.isFinite(job["timeout-minutes"]) || job["timeout-minutes"] < 1)) {
+        add("workflow-timeout", "Set an explicit job timeout of at least 1 minute.");
       }
       if (triggers.some((t) => ["pull_request", "pull_request_target"].includes(t)) && JSON.stringify(job["runs-on"] ?? "").includes("self-hosted") && !trustedPullRequestGate(job.if, triggers)) {
         add("workflow-runner", "Use GitHub-hosted PR runners or an explicit job gate that excludes fork PRs from persistent runners.");

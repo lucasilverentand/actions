@@ -37,7 +37,9 @@ test('treats attempted shell and workflow commands as inert data', () => {
 });
 
 test('applies independent summary length and repository scope policies', () => {
-  assert.ok(checkPullRequest({ title: `fix: ${'a'.repeat(73)}`, body }).some((finding) => finding.includes('summary')));
+  // The default keeps the original 100-character title allowance; 72 is an explicit opt-in.
+  assert.deepEqual(checkPullRequest({ title: `fix: ${'a'.repeat(95)}`, body }), []);
+  assert.ok(checkPullRequest({ title: `fix: ${'a'.repeat(73)}`, body }, 100, { maxSummaryLength: 72 }).some((finding) => finding.includes('summary')));
   assert.deepEqual(checkPullRequest({ title: `fix: ${'a'.repeat(73)}`, body }, 100, { maxSummaryLength: 90 }), []);
   assert.ok(checkPullRequest({ title: 'fix(parser): handle input', body }, 100, { allowScopes: false }).some((finding) => finding.includes('Scopes')));
   assert.deepEqual(checkPullRequest({ title: `fix: ${'😀'.repeat(72)}`, body }), []);

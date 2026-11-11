@@ -72,7 +72,7 @@ export async function main() {
   const pr = event().pull_request;
   if (!pr) throw new Error('Missing pull request.');
   const findings = checkPullRequest(pr, integer(input('max-title-length', '100'), 40, 200), {
-    maxSummaryLength: integer(input('max-summary-length', '72'), 1, 200),
+    maxSummaryLength: integer(input('max-summary-length', '100'), 1, 200),
     allowScopes: boolean(input('allow-scopes', 'true')),
     requireIssueReference: boolean(input('require-issue-reference', 'false')),
     issuePrefixes: parseIssuePrefixes(input('issue-prefixes', '[]')),

@@ -12,6 +12,7 @@ function fixture(options = {}) {
     if (path.startsWith('/git/ref/heads/')) return { object: { sha: options.head ?? sha } };
     if (path.startsWith('/releases?')) return options.released ? [{ tag_name: 'v1.0.0' }] : [];
     if (path.startsWith('/commits/v')) return { sha };
+    if (path.endsWith('?per_page=1')) return { status: options.headStatus ?? 'diverged' };
     if (path.startsWith('/compare/')) return { status: 'identical', total_commits: 0, commits: [] };
     if (path.startsWith('/commits?')) return [{ sha, commit: { message: 'feat: introduce reusable automation' } }];
     throw Object.assign(new Error('Not found'), { status: 404 });
@@ -49,4 +50,22 @@ test('refuses untrusted events, stale runs, non-default branches, forks and arch
 test('already released commits are an explicit no-op and malformed initial versions fail', async () => {
   assert.equal((await runRelease(fixture({ released: true }).api, context)).planned, false);
   await assert.rejects(runRelease(fixture().api, context, { initialVersion: 'v1.0.0' }));
+});
+
+test('a run overtaken by a newer descendant succeeds as superseded without planning or writing', async () => {
+  for (const dryRun of [true, false]) {
+    const { api, writes } = fixture({ head: 'b'.repeat(40), headStatus: 'ahead' });
+    const result = await runRelease(api, context, { dryRun, needs: { verify: { result: 'success' } } });
+    assert.equal(result.superseded, true);
+    assert.equal(result.planned, false);
+    assert.equal(result.created, false);
+    assert.equal(result.tag, '');
+    assert.deepEqual(writes, []);
+  }
+  // Rewritten or unrelated history is not treated as superseded.
+  for (const headStatus of ['diverged', 'behind', 'identical']) {
+    const { api, writes } = fixture({ head: 'b'.repeat(40), headStatus });
+    await assert.rejects(runRelease(api, context, { dryRun: false, needs: { verify: { result: 'success' } } }));
+    assert.deepEqual(writes, []);
+  }
 });

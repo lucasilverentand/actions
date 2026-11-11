@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { chmod, lstat, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { auditFleet, inventoryReader, privateController, reportCounts, writePrivateReport } from '../core.mjs';
+import { auditFleet, inventoryReader, privateController, reportCounts, reportSummary, writePrivateReport } from '../core.mjs';
 
 const repo = { full_name: 'example/one', owner: { login: 'example', type: 'User' } };
 const getInventory = async (path) => path === '/user' ? { login: 'example' }
@@ -83,4 +83,26 @@ test('private reports never follow file or directory symlinks', { skip: process.
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
+});
+
+test('summary lists repositories needing attention with escaped findings, errors first and capped', () => {
+  const report = { repositories: [
+    { repository: 'example/clean', findings: [] },
+    { repository: 'example/warned', findings: [{ level: 'warning', rule: 'readme', message: 'Add a README.' }] },
+    { repository: 'example/failing', findings: [
+      { level: 'warning', rule: 'description', message: 'Add a repository description.' },
+      { level: 'error', rule: 'workflow-pin', message: 'Pin [external] actions | now', path: '.github/workflows/ci.yml' },
+    ] },
+  ] };
+  const lines = reportSummary(report);
+  assert.equal(lines.join('\n').includes('example/clean'), false);
+  assert.deepEqual(lines, [
+    '- **example/failing**',
+    '  - error: Pin &#91;external&#93; actions &#124; now (.github/workflows/ci.yml)',
+    '  - warning: Add a repository description.',
+    '- **example/warned**',
+    '  - warning: Add a README.',
+  ]);
+  const capped = reportSummary(report, 2);
+  assert.deepEqual(capped, ['- **example/failing**', '  - error: Pin &#91;external&#93; actions &#124; now (.github/workflows/ci.yml)', '', '2 more findings are only in the private report.']);
 });

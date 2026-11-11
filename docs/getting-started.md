@@ -6,7 +6,7 @@ This repository supplies eight actions that individual repositories can call, pl
 
 [PR policy](../pr-policy/) runs when a pull request is opened or changed. It reads the title and body from the event payload, checks the title format and required sections, and fails with guidance if they do not match the policy.
 
-The default title format is a Conventional Commit such as `fix(parser): handle empty input`, up to 100 characters with a 72-character summary. Scope restrictions and visible issue-key linkage are configurable. Bodies need Summary and Testing sections with useful text. This keeps merge history and review descriptions consistent. It does not run the described tests or judge the technical correctness of the change.
+The default title format is a Conventional Commit such as `fix(parser): handle empty input`, up to 100 characters. A shorter summary limit, such as 72 characters, is an explicit input. Scope restrictions and visible issue-key linkage are configurable. Bodies need Summary and Testing sections with useful text. This keeps merge history and review descriptions consistent. It does not run the described tests or judge the technical correctness of the change.
 
 Copy [pr-policy.yml](examples/pr-policy.yml) into the consuming repository's `.github/workflows/`. It needs no checkout, token permissions, or secrets. After its first successful run, add the check to default-branch protection. If squash commits should preserve this text, configure their title and message to use the PR title and body.
 

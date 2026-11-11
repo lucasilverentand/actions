@@ -63,10 +63,17 @@ ${lines.join("\n")}
 function escapeMarkdown(value) {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("|", "&#124;").replaceAll("\r", " ").replaceAll("\n", " ").replaceAll("`", "&#96;").replaceAll("[", "&#91;").replaceAll("]", "&#93;");
 }
+var genericFailure = "Action failed. Check its configuration, token permissions, and GitHub API availability.";
+var platformErrorKeys = ["code", "errno", "syscall", "path", "cmd", "stdout", "stderr", "cause", "errors"];
+function failureMessage(error) {
+  const own = error instanceof Error && (Object.getPrototypeOf(error) === Error.prototype || error.name === "ApiError") && !platformErrorKeys.some((key) => Object.hasOwn(error, key));
+  const message = own ? String(error.message).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/gu, " ").trim().slice(0, 300) : "";
+  return `::error::${(message || genericFailure).replaceAll("%", "%25")}`;
+}
 function runIfMain(meta, fn) {
   if (process.argv[1] && meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
-    fn().catch(() => {
-      console.error("Action failed. Check its configuration, token permissions, and GitHub API availability.");
+    fn().catch((error) => {
+      console.error(failureMessage(error));
       process.exitCode = 1;
     });
   }
@@ -74,7 +81,7 @@ function runIfMain(meta, fn) {
 
 // lib/commit-policy.mjs
 var types = ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"];
-function checkSubject(subject, { maxSubjectLength = 100, maxSummaryLength = 72, allowScopes = true } = {}) {
+function checkSubject(subject, { maxSubjectLength = 100, maxSummaryLength = 100, allowScopes = true } = {}) {
   if (typeof subject !== "string") return ["Provide a Conventional Commit subject."];
   const findings = [];
   const match = /^([a-z]+)(?:\(([a-zA-Z0-9][a-zA-Z0-9._/-]*)\))?(!)?: (\S(?:.*\S)?)$/u.exec(subject);
@@ -226,6 +233,12 @@ var ReleaseApi = class {
     return response.json();
   }
 };
+async function supersededBy(api, sha, current) {
+  if (!/^[a-f0-9]{40}$/.test(current ?? "")) throw new Error("Cannot resolve the current default-branch commit.");
+  const comparison = await api.request("GET", `/compare/${sha}...${current}?per_page=1`);
+  if (comparison.status !== "ahead") throw new Error("Default branch no longer contains this commit; review its history before releasing.");
+  return true;
+}
 async function optional(api, path) {
   try {
     return await api.request("GET", path);
@@ -246,7 +259,9 @@ async function publishRelease(api, metadata, context) {
   if (context.ref !== `refs/heads/${repo.default_branch}`) throw new Error("Release only from the default branch.");
   const branchPath = `/git/ref/heads/${encodeURIComponent(repo.default_branch)}`;
   const head = await api.request("GET", branchPath);
-  if (head.object.sha !== context.sha) throw new Error("Default branch advanced; release from a fresh verified run.");
+  if (head.object.sha !== context.sha && await supersededBy(api, context.sha, head.object.sha)) {
+    return { created: false, superseded: true, tag, url: "" };
+  }
   for (const release2 of await stableReleases(api)) {
     if (compareVersions(version, release2.tag_name.slice(1)) < 0) throw new Error("Version is older than a published stable release.");
   }
@@ -266,7 +281,10 @@ async function publishRelease(api, metadata, context) {
     if (!ref) throw new Error("Published release is missing its immutable tag.");
     return { created: false, tag, url: existing.html_url };
   }
-  if ((await api.request("GET", branchPath)).object.sha !== context.sha) throw new Error("Default branch advanced during release preparation.");
+  const latest = (await api.request("GET", branchPath)).object.sha;
+  if (latest !== context.sha && await supersededBy(api, context.sha, latest)) {
+    return { created: false, superseded: true, tag, url: "" };
+  }
   if (!ref) await api.request("POST", "/git/refs", { ref: `refs/tags/${tag}`, sha: context.sha });
   const release = await api.request("POST", "/releases", {
     tag_name: tag,
@@ -282,6 +300,7 @@ async function publishRelease(api, metadata, context) {
 }
 
 // release/src/index.mjs
+var unchanged = { planned: false, created: false, superseded: false, version: "", tag: "", url: "", notes: "" };
 async function runRelease(api, context, { dryRun = true, needs = {}, initialVersion = "1.0.0" } = {}) {
   if (!["push", "workflow_dispatch"].includes(context.event) || !/^[a-f0-9]{40}$/.test(context.sha ?? "")) {
     throw new Error("Use a default-branch push or manual run at an exact commit.");
@@ -291,12 +310,21 @@ async function runRelease(api, context, { dryRun = true, needs = {}, initialVers
     throw new Error("Release requires an active original repository and its default branch.");
   }
   const head = await api.request("GET", `/git/ref/heads/${encodeURIComponent(repo.default_branch)}`);
-  if (head.object.sha !== context.sha) throw new Error("Default branch advanced; use a fresh run.");
+  if (head.object?.sha !== context.sha && await supersededBy(api, context.sha, head.object?.sha)) {
+    return { ...unchanged, superseded: true };
+  }
   if (!dryRun && !evaluateJobs(needs).passed) throw new Error("Publication requires successful upstream verification jobs.");
   const plan = await planRelease(api, context.sha, { initialVersion });
-  if (!plan) return { planned: false, created: false, version: "", tag: "", url: "", notes: "" };
-  if (dryRun) return { ...plan, planned: true, created: false, url: "" };
-  return { ...plan, ...await publishRelease(api, plan, context), planned: true };
+  if (!plan) return unchanged;
+  if (dryRun) return { ...unchanged, ...plan, planned: true };
+  const published = await publishRelease(api, plan, context);
+  if (published.superseded) return { ...unchanged, superseded: true };
+  return { ...unchanged, ...plan, ...published, planned: true };
+}
+function releaseSummary(result) {
+  if (result.superseded) return "Superseded: the default branch moved to a newer commit. That run plans and publishes this commit; nothing was written.";
+  if (!result.planned) return "No unreleased commits.";
+  return `${result.tag}: ${result.created ? "published" : "preview or already published; no mutation"}.`;
 }
 async function main() {
   const result = await runRelease(new ReleaseApi(input("token"), process.env.GITHUB_REPOSITORY), {
@@ -309,10 +337,12 @@ async function main() {
     initialVersion: input("initial-version", "1.0.0")
   });
   for (const [key, value] of Object.entries(result)) output(key, value);
-  summary("Semantic release", [result.planned ? `${result.tag}: ${result.created ? "published" : "preview or already published; no mutation"}.` : "No unreleased commits."]);
+  summary("Semantic release", [releaseSummary(result)]);
+  console.log(releaseSummary(result));
 }
 runIfMain(import.meta, main);
 export {
   main,
+  releaseSummary,
   runRelease
 };

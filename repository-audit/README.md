@@ -13,7 +13,7 @@ Copy the [example workflow](../docs/examples/repository-audit.yml) for nightly a
 | Workflow defaults | Read-only tokens; workflows cannot create and approve PRs by default |
 | Security features | Dependency vulnerability alerts; secret scanning and push protection when inspectable |
 | Repository files | README, security reporting policy, public license, and dependency update configuration |
-| Workflow files | Immutable external action pins and container digests; explicit permissions; job timeouts; checkout without persisted credentials; direct event/input interpolation into scripts; privileged-event checkout; obvious self-hosted PR runners; inherited reusable-workflow secrets |
+| Workflow files | Immutable external action pins and container digests; explicit permissions; explicit job timeouts with no fixed maximum; checkout without persisted credentials; direct event/input interpolation into scripts; privileged-event checkout; obvious self-hosted PR runners; inherited reusable-workflow secrets |
 
 Squash-only merging is a history preference in this baseline. It is not a prerequisite for a secure repository. Approval counts, deployment environments, organization bypass policies, and language-specific CI remain repository decisions.
 
