@@ -35,4 +35,4 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: lucasilverentand/actions/pr-policy@6a45074e36bc9e1a426846bb080a76d02ce9dd78 # reviewed implementation
+      - uses: lucasilverentand/actions/pr-policy@97f2521e931e2fbded98a3c7e3d8759d3272edbd # reviewed implementation
