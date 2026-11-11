@@ -18,8 +18,8 @@ test('published manifests resolve to bundles that load without repository depend
       const entry = resolve(directory, name, metadata.runs.main);
       const { stdout } = await execute(process.execPath, [
         '--input-type=module', '-e',
-        'const bundle = await import(process.argv[1]); console.log(typeof bundle.main);', entry,
-      ], { cwd: directory });
+        'const bundle = await import(process.env.BUNDLE_ENTRY); console.log(typeof bundle.main);',
+      ], { cwd: directory, env: { ...process.env, BUNDLE_ENTRY: entry } });
       assert.equal(stdout.trim(), 'function');
     }
   } finally {
