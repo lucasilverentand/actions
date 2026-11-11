@@ -8,4 +8,4 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: seventwo-studio/actions/pr-policy@f3ec22312a6a9a9c0ae95b317400503359f2d2ee # reviewed implementation
+      - uses: seventwo-studio/actions/pr-policy@da44bb149829f39aca3eae174453924916a6f126 # reviewed implementation

@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: seventwo-studio/actions/branch-cleanup@f3ec22312a6a9a9c0ae95b317400503359f2d2ee # reviewed implementation
+      - uses: seventwo-studio/actions/branch-cleanup@da44bb149829f39aca3eae174453924916a6f126 # reviewed implementation
         with:
           # After reviewing previews, set false and grant contents: write above.
           dry-run: 'true'
