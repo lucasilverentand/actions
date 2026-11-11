@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: seventwo-studio/actions/repository-audit@5b412e499e68b1a093e631c06767602f00ccb804 # reviewed implementation
+      - uses: seventwo-studio/actions/repository-audit@e7df504d6d30f8531f166183a7721cb71dc732d6 # reviewed implementation
         with:
           # Store a repository-scoped, read-only audit credential in this repo.
           token: ${{ secrets.REPOSITORY_AUDIT_TOKEN }}
