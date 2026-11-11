@@ -2,13 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { inventoryOptions, ownedRepositories } from '../inventory.mjs';
 
+const distinct = (items, offset = 0) => items.map((repo, index) => ({ ...repo, full_name: index + offset ? repo.full_name + '-' + (index + offset) : repo.full_name }));
+
 const repository = { full_name: 'example/project', owner: { login: 'example', type: 'User' } };
 
 test('personal token inventory includes owned active repositories only', async () => {
-  const repos = await ownedRepositories(async (path) => path === '/user' ? { login: 'example' } : [
+  const repos = await ownedRepositories(async (path) => path === '/user' ? { login: 'example' } : distinct([
     repository, { ...repository, archived: true }, { ...repository, fork: true },
     { ...repository, owner: { login: 'someone-else' } },
-  ]);
+  ]));
   assert.deepEqual(repos, [repository]);
 });
 
@@ -16,7 +18,7 @@ test('installation tokens use installation inventory and exclude organization re
   const repos = await ownedRepositories(async (path) => {
     if (path === '/user') throw { status: 403 };
     assert.ok(path.startsWith('/installation/repositories?'));
-    return { repositories: [repository, { ...repository, owner: { type: 'Organization' } }] };
+    return { repositories: distinct([repository, { ...repository, owner: { type: 'Organization' } }]) };
   });
   assert.deepEqual(repos, [repository]);
 });
@@ -24,7 +26,7 @@ test('installation tokens use installation inventory and exclude organization re
 test('inventory paginates and does not hide authentication failures', async () => {
   const repos = await ownedRepositories(async (path) => {
     if (path === '/user') return { login: 'example' };
-    return path.endsWith('page=1') ? Array(100).fill(repository) : [repository];
+    return path.endsWith('page=1') ? distinct(Array(100).fill(repository)) : distinct([repository], 100);
   });
   assert.equal(repos.length, 101);
   await assert.rejects(ownedRepositories(async () => { throw { status: 401 }; }));
@@ -36,8 +38,8 @@ test('organization mode selects only active repositories owned by the requested 
   const repos = await ownedRepositories(async (path) => {
     if (path === '/user') return { login: 'example' };
     assert.ok(path.startsWith('/orgs/Example-Org/repos?type=all&'));
-    return [orgRepo, repository, { ...orgRepo, archived: true }, { ...orgRepo, disabled: true },
-      { ...orgRepo, fork: true }, { ...orgRepo, owner: { login: 'other-org', type: 'Organization' } }];
+    return distinct([orgRepo, repository, { ...orgRepo, archived: true }, { ...orgRepo, disabled: true },
+      { ...orgRepo, fork: true }, { ...orgRepo, owner: { login: 'other-org', type: 'Organization' } }]);
   }, { organization: 'Example-Org' });
   assert.deepEqual(repos, [orgRepo]);
 });
@@ -56,7 +58,7 @@ test('organization inventory paginates and preserves organization filters', asyn
   const repos = await ownedRepositories(async (path) => {
     if (path === '/user') return { login: 'example' };
     assert.ok(path.startsWith('/orgs/example-org/repos?type=all&'));
-    return path.endsWith('page=1') ? Array(100).fill(orgRepo) : [orgRepo];
+    return path.endsWith('page=1') ? distinct(Array(100).fill(orgRepo)) : distinct([orgRepo], 100);
   }, { organization: 'example-org' });
   assert.equal(repos.length, 101);
 });
@@ -109,4 +111,15 @@ test('installation discovery rejects a count that changes while paginating', asy
     return path.endsWith('page=1') ? { total_count: 101, repositories: Array(100).fill(repository) }
       : { total_count: 102, repositories: [repository, repository] };
   }));
+});
+
+
+test('rejects wrong-scope installations and duplicate inventories even with consistent counts', async () => {
+  await assert.rejects(ownedRepositories(async (path) => {
+    if (path === '/user') throw { status: 403 };
+    return { total_count: 1, repositories: [orgRepo] };
+  }), /scope/);
+  for (const entries of [[repository, repository], [{ ...repository, id: 1 }, { ...repository, id: 1, full_name: 'example/renamed' }]]) {
+    await assert.rejects(ownedRepositories(async (path) => path === '/user' ? { login: 'example' } : entries), /Duplicate/);
+  }
 });

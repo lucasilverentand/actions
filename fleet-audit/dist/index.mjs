@@ -7757,6 +7757,8 @@ async function ownedRepositories(get, { organization } = {}) {
   let matchedOwner = false;
   let inspectedCount = 0;
   let installationCount;
+  const seenNames = /* @__PURE__ */ new Set();
+  const seenIds = /* @__PURE__ */ new Set();
   for (let page = 1; page <= 100; page++) {
     const response = await get(installation ? `/installation/repositories?per_page=100&page=${page}` : organization ? `/orgs/${organization}/repos?type=all&per_page=100&page=${page}` : `/user/repos?affiliation=owner&per_page=100&page=${page}`);
     const batch = installation ? response.repositories : response;
@@ -7769,6 +7771,9 @@ async function ownedRepositories(get, { organization } = {}) {
     }
     inspectedCount += batch.length;
     for (const repo of batch) {
+      if (typeof repo.full_name !== "string" || seenNames.has(repo.full_name.toLowerCase()) || repo.id !== void 0 && seenIds.has(repo.id)) throw new Error("Duplicate or invalid repository inventory.");
+      seenNames.add(repo.full_name.toLowerCase());
+      if (repo.id !== void 0) seenIds.add(repo.id);
       const matches = organization ? repo.owner.type === "Organization" && repo.owner.login.toLowerCase() === organization.toLowerCase() : installation ? repo.owner.type === "User" : repo.owner.login === login;
       if (!matches) continue;
       matchedOwner = true;
@@ -7776,7 +7781,7 @@ async function ownedRepositories(get, { organization } = {}) {
     }
     if (batch.length < 100) {
       if (installationCount !== void 0 && inspectedCount !== installationCount) throw new Error("Incomplete installation inventory.");
-      if (organization && installation && !matchedOwner) throw new Error("The installation has no repositories for the requested organization.");
+      if (installation && !matchedOwner && (organization || inspectedCount)) throw new Error("The installation has no repositories for the requested scope.");
       return repositories;
     }
   }
