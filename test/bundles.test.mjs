@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { tmpdir, EOL } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
@@ -46,7 +46,7 @@ test('PR action executes through its relocated manifest entry point', async () =
       GITHUB_EVENT_NAME: 'pull_request', GITHUB_EVENT_PATH: eventPath,
       GITHUB_OUTPUT: outputPath, GITHUB_STEP_SUMMARY: summaryPath,
     } });
-    assert.equal(await readFile(outputPath, 'utf8'), 'valid=true\n');
+    assert.equal(await readFile(outputPath, 'utf8'), `valid=true${EOL}`);
     assert.match(await readFile(summaryPath, 'utf8'), /Title and body satisfy/);
   } finally {
     await rm(directory, { recursive: true, force: true });

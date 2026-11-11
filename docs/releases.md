@@ -2,7 +2,7 @@
 
 Merge an ordinary PR with a Conventional Commit title. After verification succeeds on main, CI calculates the next semantic version and publishes its tag and GitHub Release. There is no local release command, version-file update, or separate release PR.
 
-All three actions share the same version. Published stable GitHub Releases are the version source of truth. This repository's npm package is private development metadata and deliberately has no release version; it is never published to npm.
+All actions share the same version. Published stable GitHub Releases are the version source of truth. This repository's npm package is private development metadata and deliberately has no release version; it is never published to npm.
 
 ## How versions are chosen
 

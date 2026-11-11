@@ -15,7 +15,7 @@ const head = 'b'.repeat(40);
 // Interpret the runner's output-file format, including multiline values and empty strings.
 function outputs(source) {
   const result = {};
-  const lines = source.trimEnd().split('\n');
+  const lines = source.trimEnd().split(/\r?\n/);
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index];
     const multi = /^([^=]+)<<(.+)$/.exec(line);

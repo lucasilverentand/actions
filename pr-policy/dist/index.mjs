@@ -4,6 +4,7 @@ import { createRequire } from 'node:module'; const require = createRequire(impor
 import { appendFileSync, readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
+import { EOL } from "node:os";
 function input(name, fallback = "") {
   return process.env[`INPUT_${name.replaceAll(" ", "_").toUpperCase()}`] ?? fallback;
 }
@@ -26,11 +27,7 @@ function output(name, value) {
     const text = typeof value === "string" ? value : JSON.stringify(value);
     if (text === void 0) throw new Error("Undefined output value.");
     const delimiter = `output_${randomUUID()}`;
-    appendFileSync(process.env.GITHUB_OUTPUT, /[\r\n]/.test(text) ? `${name}<<${delimiter}
-${text}
-${delimiter}
-` : `${name}=${text}
-`);
+    appendFileSync(process.env.GITHUB_OUTPUT, /[\r\n]/.test(text) ? `${name}<<${delimiter}${EOL}${text}${EOL}${delimiter}${EOL}` : `${name}=${text}${EOL}`);
   }
 }
 function summary(title, lines) {
