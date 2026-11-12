@@ -20,10 +20,25 @@ The shared inspector requires literal commit pins for external actions and reusa
 
 Persistent self-hosted runners in PR workflows need a narrowly recognized job condition excluding forks: `github.event.pull_request.head.repo.full_name == github.repository`. For workflows without `pull_request_target`, `github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository` is also accepted. More complex expressions remain flagged for review. Same-repository PR authors must be trusted with the runner; the linter does not prove expression safety or runner isolation and cannot resolve dynamic/custom runner labels.
 
+## Tuning rules
+
+Rule IDs: `workflow-checkout-credentials`, `workflow-container-pin`, `workflow-injection`, `workflow-inspection`, `workflow-parse`, `workflow-permissions`, `workflow-pin`, `workflow-privileged-checkout`, `workflow-removed`, `workflow-runner`, `workflow-secrets`, `workflow-timeout`, `workflow-write-all`, `workflows`.
+
+For example:
+
+```yaml
+rules: '{"workflow-timeout": "warning"}'
+trusted-owners: '["example-org"]'
+```
+
+Unverified inspections always stay errors.
+
 ## Interface
 
 | Input | Default | Meaning |
 | --- | --- | --- |
+| `rules` | `{}` | JSON object mapping rule ids to error, warning or off. Unverified inspections cannot be changed. |
+| `trusted-owners` | `[]` | JSON array of owners whose actions and reusable workflows may be referenced by branch or tag. |
 | `token` | `${{ github.token }}` | Contents read |
 | `fail-on-error` | `true` | Fail for errors or incomplete inspection; `false` only changes exit status |
 

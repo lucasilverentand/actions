@@ -1,3 +1,4 @@
+import { applyRules } from '../../lib/rules.mjs';
 import { chmod, lstat, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { GitHub } from '../../lib/github.mjs';
@@ -38,11 +39,11 @@ export async function auditFleet(get, options, inspect) {
   const inventory = await ownedRepositories(get, options);
   const repositories = await mapConcurrent(inventory, options.concurrency ?? 2, async (repo) => {
     try {
-      return { repository: repo.full_name, findings: await inspect(repo.full_name) };
+      return { repository: repo.full_name, findings: applyRules(await inspect(repo.full_name, { ...options, rules: {} }), options.rules) };
     } catch {
-      return { repository: repo.full_name, findings: [{
-        level: 'error', rule: 'inspection', message: 'Repository inspection failed or is inaccessible.',
-      }] };
+      return { repository: repo.full_name, findings: applyRules([{
+        level: 'error', unverified: true, rule: 'inspection', message: 'Repository inspection failed or is inaccessible.',
+      }], options.rules) };
     }
   });
   return {
@@ -53,7 +54,7 @@ export async function auditFleet(get, options, inspect) {
 }
 
 export function repositoryInspector(token) {
-  return (repository) => auditRepository(new GitHub(token, repository));
+  return (repository, options = {}) => auditRepository(new GitHub(token, repository), options);
 }
 
 export function reportCounts(report) {

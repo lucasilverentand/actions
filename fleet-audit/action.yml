@@ -14,6 +14,12 @@ inputs:
   inspection-concurrency:
     description: Number of repositories audited concurrently (1–4).
     default: '2'
+  rules:
+    description: JSON object mapping rule ids to error, warning or off. Unverified inspections cannot be changed.
+    default: '{}'
+  trusted-owners:
+    description: JSON array of owners whose actions and reusable workflows may be referenced by branch or tag.
+    default: '[]'
 outputs:
   report-path:
     description: Absolute path to a private JSON report in the runner temporary directory.

@@ -1,3 +1,4 @@
+import { applyRules, parseRules, parseTrustedOwners } from '../../lib/rules.mjs';
 import { ApiError, GitHub } from '../../lib/github.mjs';
 import { boolean, escapeMarkdown, event, input, output, runIfMain, summary } from '../../lib/runtime.mjs';
 import { inspectWorkflow } from '../../repository-audit/src/workflows.mjs';
@@ -7,7 +8,7 @@ const sha = (value) => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value)
 const workflowPath = (value) => typeof value === 'string' && /^\.github\/workflows\/[^/]+\.ya?ml$/.test(value);
 const supportedEvents = new Set(['pull_request', 'pull_request_target', 'schedule', 'workflow_dispatch']);
 
-export async function inspectWorkflows(api, { eventName, payload = {} }) {
+export async function inspectWorkflows(api, { eventName, payload = {}, rules = {}, trustedOwners = [] }) {
   if (!supportedEvents.has(eventName)) throw new Error('Unsupported workflow policy event.');
   const result = { findings: [], inspectedSha: null, inspectedCount: 0 };
   const add = (rule, message, level = 'error', path) => result.findings.push({ rule, message, level, ...(path ? { path } : {}) });
@@ -40,12 +41,13 @@ export async function inspectWorkflows(api, { eventName, payload = {} }) {
     }
     // Contents are fetched by immutable commit, never by attacker-controlled raw/download URLs.
     const inspected = await mapConcurrent(paths, 4,
-      async (path) => inspectWorkflow(await api.file(path, result.inspectedSha), path));
+      async (path) => inspectWorkflow(await api.file(path, result.inspectedSha), path, { trustedOwners }));
     result.findings.push(...inspected.flat());
     result.inspectedCount = paths.length;
   } catch {
-    add('workflow-inspection', 'Inspection is unverified: check token access, event metadata, and file limits.');
+    result.findings.push({ rule: 'workflow-inspection', message: 'Inspection is unverified: check token access, event metadata, and file limits.', level: 'error', unverified: true });
   }
+  result.findings = applyRules(result.findings, rules);
   return result;
 }
 
@@ -69,7 +71,7 @@ async function workflowDirectory(api, ref) {
 
 export async function main() {
   const api = new GitHub(input('token'));
-  const result = await inspectWorkflows(api, { eventName: process.env.GITHUB_EVENT_NAME, payload: event() });
+  const result = await inspectWorkflows(api, { eventName: process.env.GITHUB_EVENT_NAME, payload: event(), rules: parseRules(input('rules', '{}')), trustedOwners: parseTrustedOwners(input('trusted-owners', '[]')) });
   const passed = !result.findings.some((finding) => finding.level === 'error');
   output('findings', result.findings);
   output('passed', passed);

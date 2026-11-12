@@ -9,9 +9,9 @@ npm ci --ignore-scripts
 # Repositories owned by the authenticated personal account:
 node tools/fleet-audit/index.mjs
 # Repositories owned by a named organization:
-node tools/fleet-audit/index.mjs --org seventwo-studio
+node tools/fleet-audit/index.mjs --org example-org
 # Limit simultaneous repository audits (default 2, range 1–4):
-node tools/fleet-audit/index.mjs --org seventwo-studio --concurrency 2
+node tools/fleet-audit/index.mjs --org example-org --concurrency 2
 ```
 
 The command uses `GH_TOKEN`, then `GITHUB_TOKEN`, or existing `gh` CLI authentication. A full audit needs Contents read, Administration read, and vulnerability alerts read for each selected repository. See the [audit reference](../../repository-audit/).
@@ -22,4 +22,4 @@ Reports go to `reports/audit.json` relative to the current working directory, wi
 
 Run locally or in a private controller repository. In GitHub Actions, the tool verifies the controller's private status through the API before scanning. Keep credentials and report retention in that private controller. Do not upload reports to public logs, summaries, issues, or artifacts. The root `.gitignore` excludes `reports/`.
 
-`index.mjs` handles CLI authentication and invocation. `core.mjs` shares controller checks, report generation, and private file writing with the action. `inventory.mjs` handles explicit scope selection, discovery, and pagination; tests live in `test/`. To change audit rules, edit `repository-audit/src/` rather than adding a separate rule set here.
+`index.mjs` handles CLI authentication and invocation. `core.mjs` shares controller checks, report generation, and private file writing with the action. `inventory.mjs` handles explicit scope selection, discovery, and pagination; tests live in `test/`. Use `--rules '{"workflow-timeout":"warning","description":"off"}'` and `--trusted-owners '["example-org"]'` to tune the audit. Unverified inspections always stay errors.

@@ -3,7 +3,7 @@ import { parseDocument } from 'yaml';
 const mapping = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const permissions = new Set(['actions', 'artifact-metadata', 'attestations', 'checks', 'contents', 'deployments', 'discussions', 'id-token', 'issues', 'models', 'packages', 'pages', 'pull-requests', 'security-events', 'statuses']);
 
-export function inspectWorkflow(source, path) {
+export function inspectWorkflow(source, path, options = {}) {
   const findings = [];
   const add = (rule, message) => findings.push({ rule, message, path, level: 'error' });
   try {
@@ -63,7 +63,7 @@ export function inspectWorkflow(source, path) {
       }
     }
   } catch {
-    add('workflow-parse', 'Could not safely parse this workflow; inspect its YAML and structure.');
+    findings.push({ rule: 'workflow-parse', message: 'Could not safely parse this workflow; inspect its YAML and structure.', path, level: 'error', unverified: true });
   }
   return findings;
 
@@ -83,12 +83,17 @@ export function inspectWorkflow(source, path) {
     }
   }
 
+  function trustedReference(uses) {
+    const match = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)(?:\/[A-Za-z0-9_.-]+)*@([^\s@]+)$/.exec(uses);
+    return !!match && (options.trustedOwners ?? []).some((owner) => owner.toLowerCase() === match[1].toLowerCase());
+  }
+
   function inspectUses(uses) {
     if (typeof uses !== 'string') return add('workflow-pin', 'Action references must be literal strings.');
     if (uses.startsWith('./')) return;
     if (uses.startsWith('docker://')) {
       if (!/@sha256:[a-f0-9]{64}$/.test(uses)) add('workflow-pin', 'Pin container actions to a SHA-256 digest.');
-    } else if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+@[a-f0-9]{40}$/.test(uses)) {
+    } else if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+@[a-f0-9]{40}$/.test(uses) && !trustedReference(uses)) {
       add('workflow-pin', 'Pin external actions and reusable workflows to full commit SHAs.');
     }
   }

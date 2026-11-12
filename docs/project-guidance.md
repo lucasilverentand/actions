@@ -4,6 +4,8 @@ This repository owns the reusable automation contracts. Each action's README and
 
 ## Accepted direction
 
+Audit rules are tunable per caller while unverified inspections stay errors.
+
 On 12 November 2026, the library was consolidated: message policies were retired in favour of the organization’s shared check; the gate receipt and workflow-policy PR re-checks were removed as unused safeguards. The release action remains for this repository, and branch cleanup remains because many repositories do not auto-delete merged branches.
 
 On 11 November 2026, the library's scope expanded to recurring repository policies and release controls, with support for GitHub-hosted and self-hosted runners. Keep interfaces independent of particular runner names, organizations, infrastructure hosts or deployment products. Support Linux, macOS and Windows through the Node 24 action runtime; document extra tools needed by an operation and verify the runner matrix.
