@@ -7381,6 +7381,7 @@ var knownRules = Object.freeze([
   "inspection",
   "license",
   "merge-method",
+  "merge-settings",
   "readme",
   "repository-files",
   "require-checks",
@@ -7495,6 +7496,36 @@ var GitHub = class {
     if (!response.ok) throw new ApiError(response.status);
     if (response.status === 204) return null;
     return response.json();
+  }
+  // Read-only tokens do not receive merge settings from the REST repository response; GraphQL returns them.
+  async mergeSettings() {
+    const [owner, name] = this.repository.split("/");
+    const response = await this.fetcher(new URL("https://api.github.com/graphql"), {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${this.token}`,
+        accept: "application/vnd.github+json",
+        "content-type": "application/json",
+        "user-agent": "repository-hygiene-actions"
+      },
+      body: JSON.stringify({
+        query: "query($owner:String!,$name:String!){repository(owner:$owner,name:$name){deleteBranchOnMerge mergeCommitAllowed squashMergeAllowed rebaseMergeAllowed squashMergeCommitTitle squashMergeCommitMessage}}",
+        variables: { owner, name }
+      }),
+      redirect: "error",
+      signal: AbortSignal.timeout(3e4)
+    });
+    if (!response.ok) throw new ApiError(response.status);
+    const settings = (await response.json())?.data?.repository;
+    if (typeof settings?.deleteBranchOnMerge !== "boolean") throw new Error("Merge settings are unavailable.");
+    return {
+      delete_branch_on_merge: settings.deleteBranchOnMerge,
+      allow_merge_commit: settings.mergeCommitAllowed,
+      allow_squash_merge: settings.squashMergeAllowed,
+      allow_rebase_merge: settings.rebaseMergeAllowed,
+      squash_merge_commit_title: settings.squashMergeCommitTitle,
+      squash_merge_commit_message: settings.squashMergeCommitMessage
+    };
   }
   async list(path, query = {}) {
     const items = [];
@@ -7693,12 +7724,18 @@ async function auditRepository(api, { requiredChecks = [], rules = {}, trustedOw
   const ref = repo.default_branch;
   if (!ref) throw new Error("Repository has no default branch.");
   if (!repo.description?.trim()) add("description", "Add a repository description.", "warning");
-  if (!repo.delete_branch_on_merge) add("delete-merged-branches", "Enable automatic deletion of merged pull request branches.");
-  if (!repo.allow_squash_merge || repo.allow_merge_commit || repo.allow_rebase_merge) {
-    add("merge-method", "Enable squash merging and disable merge commits and rebase merging.");
-  }
-  if (repo.squash_merge_commit_title !== "PR_TITLE" || repo.squash_merge_commit_message !== "PR_BODY") {
-    add("squash-message", "Use the pull request title and body as the squash commit message.");
+  let merge = typeof repo.delete_branch_on_merge === "boolean" ? repo : null;
+  if (!merge) await inspect("merge-settings", async () => {
+    merge = await api.mergeSettings();
+  });
+  if (merge) {
+    if (!merge.delete_branch_on_merge) add("delete-merged-branches", "Enable automatic deletion of merged pull request branches.");
+    if (!merge.allow_squash_merge || merge.allow_merge_commit || merge.allow_rebase_merge) {
+      add("merge-method", "Enable squash merging and disable merge commits and rebase merging.");
+    }
+    if (merge.squash_merge_commit_title !== "PR_TITLE" || merge.squash_merge_commit_message !== "PR_BODY") {
+      add("squash-message", "Use the pull request title and body as the squash commit message.");
+    }
   }
   await inspect("branch-protection", async () => {
     const branch = encodeURIComponent(ref);

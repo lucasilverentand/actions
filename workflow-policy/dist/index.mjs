@@ -7381,6 +7381,7 @@ var knownRules = Object.freeze([
   "inspection",
   "license",
   "merge-method",
+  "merge-settings",
   "readme",
   "repository-files",
   "require-checks",
@@ -7495,6 +7496,36 @@ var GitHub = class {
     if (!response.ok) throw new ApiError(response.status);
     if (response.status === 204) return null;
     return response.json();
+  }
+  // Read-only tokens do not receive merge settings from the REST repository response; GraphQL returns them.
+  async mergeSettings() {
+    const [owner, name] = this.repository.split("/");
+    const response = await this.fetcher(new URL("https://api.github.com/graphql"), {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${this.token}`,
+        accept: "application/vnd.github+json",
+        "content-type": "application/json",
+        "user-agent": "repository-hygiene-actions"
+      },
+      body: JSON.stringify({
+        query: "query($owner:String!,$name:String!){repository(owner:$owner,name:$name){deleteBranchOnMerge mergeCommitAllowed squashMergeAllowed rebaseMergeAllowed squashMergeCommitTitle squashMergeCommitMessage}}",
+        variables: { owner, name }
+      }),
+      redirect: "error",
+      signal: AbortSignal.timeout(3e4)
+    });
+    if (!response.ok) throw new ApiError(response.status);
+    const settings = (await response.json())?.data?.repository;
+    if (typeof settings?.deleteBranchOnMerge !== "boolean") throw new Error("Merge settings are unavailable.");
+    return {
+      delete_branch_on_merge: settings.deleteBranchOnMerge,
+      allow_merge_commit: settings.mergeCommitAllowed,
+      allow_squash_merge: settings.squashMergeAllowed,
+      allow_rebase_merge: settings.rebaseMergeAllowed,
+      squash_merge_commit_title: settings.squashMergeCommitTitle,
+      squash_merge_commit_message: settings.squashMergeCommitMessage
+    };
   }
   async list(path, query = {}) {
     const items = [];

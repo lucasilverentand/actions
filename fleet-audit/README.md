@@ -21,7 +21,7 @@ Archived, disabled, and fork repositories are excluded. Inventory failures stop 
 
 ## Tuning rules
 
-Rule IDs: `actions-approval`, `actions-permissions`, `admin-bypass`, `block-branch-deletion`, `block-force-push`, `branch-protection`, `default-branch-head`, `default-token`, `delete-merged-branches`, `dependency-updates`, `description`, `inspection`, `license`, `merge-method`, `readme`, `repository-files`, `require-checks`, `require-pull-request`, `required-check`, `resolve-conversations`, `secret-scanning`, `secret-scanning-push-protection`, `security-policy`, `squash-message`, `vulnerability-alerts`, `workflow-audit`, `workflow-checkout-credentials`, `workflow-container-pin`, `workflow-injection`, `workflow-parse`, `workflow-permissions`, `workflow-pin`, `workflow-privileged-checkout`, `workflow-runner`, `workflow-secrets`, `workflow-timeout`, `workflow-write-all`, `workflows`.
+Rule IDs: `actions-approval`, `actions-permissions`, `admin-bypass`, `block-branch-deletion`, `block-force-push`, `branch-protection`, `default-branch-head`, `default-token`, `delete-merged-branches`, `dependency-updates`, `description`, `inspection`, `license`, `merge-method`, `merge-settings`, `readme`, `repository-files`, `require-checks`, `require-pull-request`, `required-check`, `resolve-conversations`, `secret-scanning`, `secret-scanning-push-protection`, `security-policy`, `squash-message`, `vulnerability-alerts`, `workflow-audit`, `workflow-checkout-credentials`, `workflow-container-pin`, `workflow-injection`, `workflow-parse`, `workflow-permissions`, `workflow-pin`, `workflow-privileged-checkout`, `workflow-runner`, `workflow-secrets`, `workflow-timeout`, `workflow-write-all`, `workflows`.
 
 For example:
 

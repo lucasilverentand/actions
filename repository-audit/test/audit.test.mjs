@@ -136,3 +136,16 @@ test('overrides change policy findings but cannot suppress failed inspections', 
   const failed = await auditRepository(fixture({ fail: '/actions/permissions/workflow' }), { rules: Object.fromEntries(knownRules.map((id) => [id, 'off'])) });
   assert.deepEqual(failed.map(({ rule, level, unverified }) => ({ rule, level, unverified })), [{ rule: 'actions-permissions', level: 'error', unverified: true }]);
 });
+
+test('reads merge settings another way for read-only tokens instead of reporting them disabled', async () => {
+  const hidden = { delete_branch_on_merge: undefined, allow_squash_merge: undefined, allow_merge_commit: undefined,
+    allow_rebase_merge: undefined, squash_merge_commit_title: undefined, squash_merge_commit_message: undefined };
+  const good = { delete_branch_on_merge: true, allow_squash_merge: true, allow_merge_commit: false, allow_rebase_merge: false,
+    squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'PR_BODY' };
+  const rulesOf = async (mergeSettings) => (await auditRepository({ ...fixture({ repo: hidden }), mergeSettings }))
+    .map(({ rule, unverified }) => ({ rule, unverified }));
+  assert.deepEqual(await rulesOf(async () => good), []);
+  assert.deepEqual(await rulesOf(async () => ({ ...good, delete_branch_on_merge: false, allow_rebase_merge: true })),
+    [{ rule: 'delete-merged-branches', unverified: undefined }, { rule: 'merge-method', unverified: undefined }]);
+  assert.deepEqual(await rulesOf(async () => { throw new ApiError(403); }), [{ rule: 'merge-settings', unverified: true }]);
+});
