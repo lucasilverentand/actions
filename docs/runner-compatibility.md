@@ -24,6 +24,6 @@ The runner needs outbound HTTPS connectivity to GitHub's required Actions servic
 
 Most actions need no external executable. **Branch cleanup requires Git 2.31 or newer on `PATH` only when deletion is explicitly enabled**; its preview uses the GitHub API. Git must support `push --force-with-lease` and the runner must be able to create and remove its temporary directory. The permission and event restrictions documented by each action still apply.
 
-The CI gate writes receipts under `RUNNER_TEMP` when that variable is present. Keep that directory writable and manage private artifact retention in the caller. Credentials and repository data remain subject to the consuming repository's access controls; runner selection does not widen their scope.
+Credentials and repository data remain subject to the consuming repository's access controls; runner selection does not widen their scope.
 
 Proxy-based runners are supported through standard `HTTP_PROXY`/`HTTPS_PROXY` and lowercase variants, plus `NO_PROXY`/`no_proxy`. Automatic proxy setup uses [Node's built-in proxy configuration](https://nodejs.org/api/http.html#httpsetglobalproxyfromenvproxyenv), available from Node 24.14. Older Node 24 runner runtimes must start with `NODE_USE_ENV_PROXY=1`. Configure `NODE_EXTRA_CA_CERTS` before the runner starts when Node needs an additional trusted CA. Branch deletion preserves only approved Git TLS/proxy settings from runner configuration, while isolating credentials, hooks and repository routing.

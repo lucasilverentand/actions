@@ -4,6 +4,8 @@ This repository owns the reusable automation contracts. Each action's README and
 
 ## Accepted direction
 
+On 12 November 2026, the library was consolidated: message policies were retired in favour of the organization’s shared check; the gate receipt and workflow-policy PR re-checks were removed as unused safeguards. The release action remains for this repository, and branch cleanup remains because many repositories do not auto-delete merged branches.
+
 On 11 November 2026, the library's scope expanded to recurring repository policies and release controls, with support for GitHub-hosted and self-hosted runners. Keep interfaces independent of particular runner names, organizations, infrastructure hosts or deployment products. Support Linux, macOS and Windows through the Node 24 action runtime; document extra tools needed by an operation and verify the runner matrix.
 
 PR-only squash delivery, Conventional Commit messages and meaningful descriptions guide the baseline. Signing is not a universal commit requirement. Issue-key linkage and scope restrictions are explicit per-repository inputs. A text policy cannot prove that described tests ran or that an issue exists.
@@ -16,7 +18,7 @@ Fleet inventories and findings belong in a private controller or local report. D
 
 ## Basis and boundaries
 
-The existing [release contract](releases.md), [automation](automation.md), [PR policy](../pr-policy/README.md), [repository audit](../repository-audit/README.md) and [branch cleanup](../branch-cleanup/README.md) form the baseline. The [CI gate](../ci-gate/README.md) generalizes the all-upstream-jobs-must-succeed pattern; the [release action](../release/README.md) reuses the tested planner and publisher. [Fleet audit](../fleet-audit/README.md) exposes the existing private inventory tool as an action.
+The existing [release contract](releases.md), [automation](automation.md), [repository audit](../repository-audit/README.md) and [branch cleanup](../branch-cleanup/README.md) form the baseline. The [CI gate](../ci-gate/README.md) generalizes the all-upstream-jobs-must-succeed pattern; the [release action](../release/README.md) reuses the tested planner and publisher. [Fleet audit](../fleet-audit/README.md) exposes the existing private inventory tool as an action.
 
 Service checks, native signing, provisioning and production rollback remain owned by consuming repositories. Historical configurations and discontinued policies are not new requirements.
 

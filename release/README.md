@@ -1,6 +1,6 @@
 # Semantic release
 
-Preview or publish a stable semantic version from unreleased Conventional Commits. This packages the library's release implementation for other repositories. It reads GitHub's API and needs no checkout, npm installation or local Git.
+Preview or publish a stable semantic version from unreleased Conventional Commits. This action is maintained for this repository's own releases and for simple single-version repositories. Repositories with an existing release-please setup should keep it. It reads GitHub's API and needs no checkout, npm installation or local Git.
 
 Only `push` and `workflow_dispatch` runs on the current default branch are accepted. Fork, archived and disabled repositories are excluded. If the default branch has already moved to a newer descendant of `GITHUB_SHA`, the run succeeds as `superseded` without planning or writing anything; the newer run releases both commits. Rewritten or unrelated history still fails. Use a separate release job that depends on verification, with a non-cancelling concurrency group.
 

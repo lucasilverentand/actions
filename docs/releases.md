@@ -40,10 +40,10 @@ The publisher serializes release jobs, while the main workflow can cancel older 
 Use the full commit SHA behind a reviewed release:
 
 ```yaml
-- uses: seventwo-studio/actions/pr-policy@<reviewed-release-commit>
+- uses: seventwo-studio/actions/workflow-policy@<reviewed-release-commit>
 ```
 
-The same SHA versions all three action folders. Existing pins and releases remain valid. Release tags are protected against update and deletion; moving `v1` aliases are intentionally not part of this workflow.
+The same SHA versions all action folders. Existing pins and releases remain valid. Release tags are protected against update and deletion; moving `v1` aliases are intentionally not part of this workflow.
 
 The earlier v1.0.0, v1.0.1, and v1.1.0 releases are preserved. The [changelog](../CHANGELOG.md) retains their history and links to automatically generated release notes.
 

@@ -13,34 +13,22 @@ export async function inspectWorkflows(api, { eventName, payload = {} }) {
   const add = (rule, message, level = 'error', path) => result.findings.push({ rule, message, level, ...(path ? { path } : {}) });
   try {
     let paths;
-    let verifySnapshot;
     if (eventName === 'pull_request' || eventName === 'pull_request_target') {
-      const number = payload.pull_request?.number ?? payload.number;
-      if (!Number.isSafeInteger(number) || number < 1 || !sha(payload.pull_request?.head?.sha)) throw new Error('Missing PR metadata.');
-      const pullPath = `/pulls/${number}`;
-      const before = await api.get(pullPath);
-      if (!sha(before.head?.sha) || !sha(before.base?.sha) || before.head.sha !== payload.pull_request.head.sha) {
-        throw new Error('PR event is stale.');
-      }
-      // The PR files endpoint follows mutable refs and can race even when before/after heads match.
-      // Resolve the merge base from immutable commits, then compare complete workflow directories.
-      const comparison = await api.get(`/compare/${before.base.sha}...${before.head.sha}`, { per_page: 1 });
-      if (comparison.base_commit?.sha !== before.base.sha || !sha(comparison.merge_base_commit?.sha)) {
+      const base = payload.pull_request?.base?.sha;
+      const head = payload.pull_request?.head?.sha;
+      if (!sha(base) || !sha(head)) throw new Error('Missing or invalid PR metadata.');
+      // Compare complete directories at immutable commits, using the resolved merge base.
+      const comparison = await api.get(`/compare/${base}...${head}`, { per_page: 1 });
+      if (comparison.base_commit?.sha !== base || !sha(comparison.merge_base_commit?.sha)) {
         throw new Error('Cannot establish immutable comparison.');
       }
-      const [original, proposed] = await mapConcurrent([comparison.merge_base_commit.sha, before.head.sha], 2,
+      const [original, proposed] = await mapConcurrent([comparison.merge_base_commit.sha, head], 2,
         (ref) => workflowDirectory(api, ref));
-      result.inspectedSha = before.head.sha;
+      result.inspectedSha = head;
       paths = [...proposed].filter(([path, blob]) => original.get(path) !== blob).map(([path]) => path);
       for (const path of original.keys()) {
         if (!proposed.has(path)) add('workflow-removed', 'This workflow was removed; confirm required checks and replacement coverage.', 'warning', path);
       }
-      verifySnapshot = async () => {
-        const after = await api.get(pullPath);
-        if (after.head?.sha !== before.head.sha || after.base?.sha !== before.base.sha) {
-          throw new Error('PR changed during inspection.');
-        }
-      };
     } else {
       const repo = await api.get('');
       if (!repo.default_branch) throw new Error('Missing default branch.');
@@ -49,16 +37,14 @@ export async function inspectWorkflows(api, { eventName, payload = {} }) {
       result.inspectedSha = commit.sha;
       paths = [...(await workflowDirectory(api, commit.sha)).keys()];
       if (!paths.length) add('workflows', 'No default-branch workflow files were found.', 'warning');
-      verifySnapshot = async () => {};
     }
     // Contents are fetched by immutable commit, never by attacker-controlled raw/download URLs.
     const inspected = await mapConcurrent(paths, 4,
       async (path) => inspectWorkflow(await api.file(path, result.inspectedSha), path));
     result.findings.push(...inspected.flat());
     result.inspectedCount = paths.length;
-    await verifySnapshot();
   } catch {
-    add('workflow-inspection', 'Inspection is unverified: check token access, file limits, and whether the PR changed. Rerun against the current PR head.');
+    add('workflow-inspection', 'Inspection is unverified: check token access, event metadata, and file limits.');
   }
   return result;
 }
