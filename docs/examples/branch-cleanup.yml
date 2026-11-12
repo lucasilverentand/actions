@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.AUTOMATION_RUNNER || '"ubuntu-latest"') }}
     timeout-minutes: 15
     steps:
-      - uses: seventwo-studio/actions/branch-cleanup@e56fe37e1032292dce17b4d6a7259c20ba86e1e7 # v2.0.0
+      - uses: seventwo-studio/actions/branch-cleanup@8e01e3ca1e33bca460a292150fe504b2c6b4f13e # v2.1.1
         with:
           # After reviewing previews, set false and grant contents: write above.
           dry-run: 'true'
