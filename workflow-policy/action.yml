@@ -3,7 +3,7 @@ description: Inspect changed PR workflows or default-branch workflows without ex
 author: Luca Silverentand
 inputs:
   token:
-    description: Repository-scoped credential with Contents read and Pull requests read.
+    description: Repository-scoped credential with Contents read.
     required: true
     default: ${{ github.token }}
   fail-on-error:

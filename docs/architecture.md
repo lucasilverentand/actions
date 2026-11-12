@@ -4,7 +4,7 @@ The root action directories are the public interface. Their names appear in cons
 
 ```text
 .github/                     CI, nightly jobs, dependency updates, community policies
-pr-policy/                   PR metadata checks
+workflow-policy/             Pre-merge workflow inspection
   action.yml                 Inputs, outputs, and Node entry point
   README.md                  Usage and policy reference
   src/index.mjs              Editable implementation
@@ -12,10 +12,8 @@ pr-policy/                   PR metadata checks
   dist/index.mjs             Generated bundle GitHub runs
 repository-audit/            Same structure; also owns src/workflows.mjs
 branch-cleanup/              Same structure; includes deletion-lease tests
-commit-policy/               Immutable commit range policy
-workflow-policy/             Pre-merge workflow inspection
 fleet-audit/                 Private scheduled inventory and reporting
-ci-gate/                     Upstream job gate and receipt
+ci-gate/                     Upstream job gate
 release/                     Semantic release preview and publication
 lib/                         Shared GitHub API and Actions runtime helpers
   test/                      Shared helper tests
@@ -39,7 +37,7 @@ package-lock.json            Locked dependency versions and integrity hashes
 
 ## How an action runs
 
-A consumer references `seventwo-studio/actions/pr-policy@<full-commit-sha>`. GitHub reads `pr-policy/action.yml`, which points to `pr-policy/dist/index.mjs`. That committed bundle includes the code and its JavaScript dependencies, so the consumer needs no npm installation or checkout of their repository.
+A consumer references `seventwo-studio/actions/workflow-policy@<full-commit-sha>`. GitHub reads `workflow-policy/action.yml`, which points to `workflow-policy/dist/index.mjs`. That committed bundle includes the code and its JavaScript dependencies, so the consumer needs no npm installation or checkout of their repository.
 
 Maintainers edit `src/` and run the root build command. The build combines that source with shared `lib/` helpers and writes each action's bundle. Generated files are committed so GitHub can execute them directly; `.gitattributes` marks them as generated to reduce review clutter. They are still checked against a fresh build in CI.
 
@@ -47,7 +45,7 @@ The runtime bundle is a build artifact, not a second implementation to edit. Dep
 
 ## Dependency boundaries
 
-The actions share the GitHub API client and input/output helpers in `lib/`. Workflow YAML inspection belongs to `repository-audit/src/` because it is part of that action's policy. PR and branch policies remain in their own action folders.
+The actions share the GitHub API client and input/output helpers in `lib/`. Workflow YAML inspection belongs to `repository-audit/src/` because it is part of that action's policy. Workflow and branch policies remain in their own action folders.
 
 The fleet tool imports the repository audit's source to reuse exactly the same checks. Its inventory discovery and command-line behavior live under `tools/fleet-audit/`; the fleet action imports its reusable core without the CLI entry point. Build and consistency checks in `scripts/` are development utilities.
 
@@ -57,9 +55,9 @@ One root package and lockfile cover the repository. Separate npm packages or wor
 
 ## Compatibility
 
-The public action paths, inputs, outputs, and policy behavior remain stable through this reorganization. Each manifest's internal entry point moves with its action. Existing commit pins and the `v1.0.0` release continue to address the original immutable tree.
+Published action paths, inputs, outputs, and behavior are versioned together. Existing commit pins and the `v1.0.0` release continue to address the original immutable tree.
 
-The fleet command's current source path is `tools/fleet-audit/index.mjs`; the old `scripts/audit-owner.mjs` path remains in older pinned versions. Adoption examples now live in `docs/examples/`. Those are source-tree navigation changes, not changes to the public action addresses.
+The fleet command's current source path is `tools/fleet-audit/index.mjs`; the old `scripts/audit-owner.mjs` path remains in older pinned versions. Adoption examples now live in `docs/examples/`.
 
 ## Private local files
 

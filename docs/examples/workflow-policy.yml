@@ -5,7 +5,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  pull-requests: read
 jobs:
   workflow-policy:
     # PR-triggered: keep GitHub-hosted for repositories that accept fork PRs. See docs/runner-compatibility.md.

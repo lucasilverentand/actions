@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { copyFile, mkdtemp, readdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -60,7 +60,7 @@ async function fixture(action, run) {
   }
 }
 
-test('CI gate bundle executes from a path with spaces and writes a private source receipt', async () => {
+test('CI gate bundle executes from a path with spaces and reports results', async () => {
   await fixture('ci-gate', async ({ directory, entry, env }) => {
     env.INPUT_NEEDS = JSON.stringify({ test: { result: 'success', outputs: { privateValue: 'do-not-copy-this-output' } } });
     env['INPUT_REQUIRED-JOBS'] = '["test"]';
@@ -68,13 +68,8 @@ test('CI gate bundle executes from a path with spaces and writes a private sourc
     const result = outputs(await readFile(env.GITHUB_OUTPUT, 'utf8'));
     assert.equal(result.passed, 'true');
     assert.deepEqual(JSON.parse(result.failures), []);
-    const receiptText = await readFile(result['receipt-path'], 'utf8');
-    const receipt = JSON.parse(receiptText);
-    assert.equal(receipt.sourceSha, head);
-    assert.equal(receipt.repository, 'example/project');
-    assert.deepEqual(receipt.results, { test: 'success' });
-    assert.equal(receiptText.includes('do-not-copy-this-output'), false);
-    if (process.platform !== 'win32') assert.equal((await stat(result['receipt-path'])).mode & 0o777, 0o600);
+    assert.deepEqual(Object.keys(result).sort(), ['failures', 'passed']);
+    assert.match(await readFile(env.GITHUB_STEP_SUMMARY, 'utf8'), /All required upstream jobs satisfy the gate/);
   });
 });
 
@@ -133,10 +128,10 @@ test('release bundle direct entry runs exactly once and dry-run performs no muta
 });
 
 test('bundled entry points report their own diagnostic instead of a generic failure', async () => {
-  await fixture('pr-policy', async ({ directory, entry, env }) => {
+  await fixture('branch-cleanup', async ({ directory, entry, env }) => {
     const failure = await execute(process.execPath, [entry], { cwd: directory, env }).catch((error) => error);
     assert.equal(failure.code, 1);
-    assert.match(failure.stderr, /^::error::Use this action only on pull_request events\.\r?\n$/);
+    assert.match(failure.stderr, /^::error::Cleanup requires a schedule or manual dispatch\.\r?\n$/);
   });
 });
 

@@ -4,7 +4,7 @@ Catch unsafe workflow changes while reviewing a PR. This action reads workflow Y
 
 On `pull_request` or `pull_request_target`, it inspects added and changed `.github/workflows/*.yml` and `.yaml` files at the PR's exact head commit. It resolves the merge base using the immutable base and head commits, then compares complete workflow directories at the merge base and head by their blob SHAs. It never uses the mutable PR changed-file endpoint or the comparison endpoint's capped file list. This keeps the inspected file set consistent even if a branch changes and changes back during inspection.
 
-The live PR must match the event head; the action rechecks head and base after inspection. A stale event, concurrent update, incomplete directory, inaccessible file, or malformed YAML fails as unverified. Removed or renamed-out workflows are reported as warnings so reviewers can check replacement coverage.
+Missing or invalid event SHAs, an incomplete directory, or an inaccessible file fails as unverified. Malformed YAML is reported as a policy error. Removed or renamed-out workflows are reported as warnings so reviewers can check replacement coverage.
 
 On `schedule` or `workflow_dispatch`, it resolves the current default branch to a commit and inspects all its workflow files. It accepts neither a user-supplied repository URL nor download URLs from PR metadata.
 
@@ -24,7 +24,7 @@ Persistent self-hosted runners in PR workflows need a narrowly recognized job co
 
 | Input | Default | Meaning |
 | --- | --- | --- |
-| `token` | `${{ github.token }}` | Contents read and Pull requests read |
+| `token` | `${{ github.token }}` | Contents read |
 | `fail-on-error` | `true` | Fail for errors or incomplete inspection; `false` only changes exit status |
 
 Outputs are `findings` (JSON array), `passed` (JSON boolean), `inspected-sha` (commit SHA or null), and `inspected-count` (number of files in the completed inspection batch). Findings also appear in the job summary. Up to four files are read concurrently; findings retain directory order. A file-read failure invalidates the batch instead of publishing partial workflow findings. Workflow directories of 1,000 or more entries, duplicate or malformed directory metadata, and workflow symlinks are rejected rather than treated as complete. Unrelated changed files do not impose a PR-size limit. Individual files use the shared API client's 1 MB limit.

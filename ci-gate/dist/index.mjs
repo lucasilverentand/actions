@@ -1,9 +1,5 @@
 import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);
 
-// ci-gate/src/index.mjs
-import { mkdtemp, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-
 // lib/job-results.mjs
 function jobNames(value, label) {
   if (!Array.isArray(value) || value.some((name) => typeof name !== "string" || !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(name)) || new Set(value).size !== value.length) {
@@ -87,19 +83,6 @@ async function main() {
   });
   output("passed", result.passed);
   output("failures", result.failures);
-  let receipt = "";
-  if (process.env.RUNNER_TEMP) {
-    const directory = await mkdtemp(join(process.env.RUNNER_TEMP, "ci-gate-"));
-    receipt = join(directory, "receipt.json");
-    await writeFile(receipt, JSON.stringify({
-      repository: process.env.GITHUB_REPOSITORY,
-      sourceSha: process.env.GITHUB_SHA,
-      runId: process.env.GITHUB_RUN_ID,
-      runAttempt: process.env.GITHUB_RUN_ATTEMPT,
-      ...result
-    }, null, 2) + "\n", { mode: 384 });
-  }
-  output("receipt-path", receipt);
   summary("Required jobs", result.passed ? ["All required upstream jobs satisfy the gate."] : result.failures.map((f) => `- ${escapeMarkdown(f.job)}: ${f.result}.`));
   if (!result.passed) process.exitCode = 1;
 }

@@ -6,7 +6,7 @@ The latest release is supported. Consumers should pin reviewed release commits a
 
 ## Trust boundaries
 
-PR titles and bodies are parsed as data. The PR policy action does not check out code, need a token, execute PR text, or exempt bots. Run it on `pull_request`, with no secrets and no write permissions.
+The pinned PR policy workflow parses titles and bodies as data without checking out code, using a token, or executing PR text.
 
 The repository audit reads settings and default-branch workflow files through the API. It never executes those files or changes repository settings. Static checks cover the documented rules; they do not replace application security review or detect every way a workflow can invoke unsafe code.
 
@@ -24,6 +24,6 @@ Action dependencies are bundled. Committed bundles must match the source build. 
 
 ## Additional action boundaries
 
-Workflow policy inspects immutable PR content without executing it. Commit policy treats messages as data. The CI gate retains only dependency result states, not upstream outputs. Its caller owns the complete dependency list.
+Workflow policy inspects immutable PR content without executing it. The CI gate retains only dependency result states, not upstream outputs. Its caller owns the complete dependency list.
 
 Release publication defaults to preview and requires a trusted default-branch event, successful upstream results and explicit write activation. Tags never move. Fleet actions require a private controller before discovery and again before exposing their report path; keep artifacts private and bounded in retention. Windows runners must protect private temporary directories using account ACLs; POSIX modes alone do not establish Windows access control.

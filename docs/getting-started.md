@@ -1,14 +1,10 @@
 # Walkthrough and setup
 
-This repository supplies eight actions that individual repositories can call, plus a standalone command for auditing multiple repositories. The workflows in `.github/workflows/` maintain this library itself. The files in `docs/examples/` are templates to install elsewhere.
+This repository supplies six actions that individual repositories can call, plus a standalone command for auditing multiple repositories. The workflows in `.github/workflows/` maintain this library itself. The files in `docs/examples/` are templates to install elsewhere.
 
-## 1. Check PR descriptions
+## 1. Check PR messages
 
-[PR policy](../pr-policy/) runs when a pull request is opened or changed. It reads the title and body from the event payload, checks the title format and required sections, and fails with guidance if they do not match the policy.
-
-The default title format is a Conventional Commit such as `fix(parser): handle empty input`, up to 100 characters. A shorter summary limit, such as 72 characters, is an explicit input. Scope restrictions and visible issue-key linkage are configurable. Bodies need Summary and Testing sections with useful text. This keeps merge history and review descriptions consistent. It does not run the described tests or judge the technical correctness of the change.
-
-Copy [pr-policy.yml](examples/pr-policy.yml) into the consuming repository's `.github/workflows/`. It needs no checkout, token permissions, or secrets. After its first successful run, add the check to default-branch protection. If squash commits should preserve this text, configure their title and message to use the PR title and body.
+The organization's shared PR message policy is the single title and commit message check.
 
 ## 2. Audit repository configuration
 
@@ -40,9 +36,7 @@ This command gives an inventory at the time it runs. For recurring per-repositor
 
 [Workflow policy](../workflow-policy/) checks proposed workflow changes using immutable API content. Its trusted-base example needs no checkout of PR code. Require its check to catch configuration problems before merge.
 
-[Commit policy](../commit-policy/) checks actual messages in immutable commit ranges. For squash workflows, run it on pushes to the default branch and validate PR titles separately; enable PR commit checks when intermediate commits must also follow policy.
-
-[CI gate](../ci-gate/) provides one required check for upstream suites. Include all suites in its needs list and use always() so failures and skipped jobs reach the gate. Its receipt can be retained as an artifact.
+[CI gate](../ci-gate/) provides one required check for upstream suites. Include all suites in its needs list and use always() so failures and skipped jobs reach the gate.
 
 [Release](../release/) previews semantic versions from unreleased commits. Publication needs explicit activation, Contents write, successful upstream jobs and a non-cancelling concurrency group. Keep deployment and package publishing in their owning workflows.
 

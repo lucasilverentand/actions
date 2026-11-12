@@ -4,14 +4,14 @@ Reusable GitHub Actions for review quality, CI gates, repository checks, release
 
 | Action | What it does | Access |
 | --- | --- | --- |
-| [PR policy](pr-policy/) | Validates Conventional Commit titles and Summary / Testing sections | No token or checkout |
-| [Commit policy](commit-policy/) | Checks actual commit messages in immutable PR or push ranges | Read-only; no checkout |
 | [Workflow policy](workflow-policy/) | Inspects changed workflow files before merge | Read-only; never executes PR code |
 | [Repository audit](repository-audit/) | Reports configuration drift and unsafe workflow patterns | Read-only; some settings need an administrative read credential |
 | [Fleet audit](fleet-audit/) | Audits accessible personal or organization repositories | Private controller and scoped read credential |
 | [Branch cleanup](branch-cleanup/) | Previews old merged branches; deletion requires an explicit opt-in | Read-only for preview; Contents write for deletion |
-| [CI gate](ci-gate/) | Requires upstream jobs to succeed and writes a source-specific receipt | No token or checkout |
-| [Release](release/) | Previews or publishes immutable semantic versions after verification | Read-only preview; Contents write to publish |
+| [CI gate](ci-gate/) | Requires upstream jobs to succeed | No token or checkout |
+| [Release](release/) | Maintained for this repository and simple single-version repositories; previews or publishes immutable semantic versions | Read-only preview; Contents write to publish |
+
+The organization's shared PR message policy is the single title and commit message check. Repositories with an existing release-please setup should keep it.
 
 Start with the [walkthrough and setup guide](docs/getting-started.md), then copy the workflows in [docs/examples/](docs/examples/) into a consuming repository. Examples pin the commit of a published release. Review updates and keep full commit pins.
 

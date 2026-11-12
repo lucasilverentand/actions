@@ -26,7 +26,7 @@ The branch-preview job uses Contents read and Pull requests read permissions. It
 
 [dependabot.yml](../.github/dependabot.yml) requests weekly updates for npm dependencies and GitHub Actions. An npm update that affects a bundled dependency also needs regenerated bundles; the consistency check catches a source/bundle mismatch.
 
-[pull_request_template.md](../.github/pull_request_template.md) supplies Summary and Testing prompts. The template helps authors fill in a body; the PR action validates the resulting text.
+[pull_request_template.md](../.github/pull_request_template.md) supplies Summary and Testing prompts. The template helps authors fill in a body; the pinned PR policy workflow validates the resulting text. The organization’s shared PR message policy is the single title and commit message check.
 
 [CODEOWNERS](../.github/CODEOWNERS) identifies who owns changes. Review requirements still depend on GitHub's branch settings. The [contribution guide](../.github/CONTRIBUTING.md) explains development, and the [security policy](../.github/SECURITY.md) explains private reporting and trust boundaries.
 

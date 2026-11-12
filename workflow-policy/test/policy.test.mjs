@@ -9,7 +9,7 @@ const other = 'c'.repeat(40);
 const ancestor = 'd'.repeat(40);
 const path = '.github/workflows/ci.yml';
 const source = 'on: pull_request\npermissions: {}\njobs:\n  check:\n    runs-on: ubuntu-latest\n    timeout-minutes: 10\n    steps:\n      - run: echo ok\n';
-const context = { eventName: 'pull_request', payload: { number: 42, pull_request: { head: { sha: head } } } };
+const context = { eventName: 'pull_request', payload: { number: 42, pull_request: { base: { sha: base }, head: { sha: head } } } };
 
 function fixture(overrides = {}) {
   const calls = [];
@@ -21,17 +21,11 @@ function fixture(overrides = {}) {
     return file.status !== 'added' && isWorkflow(oldPath) ? [entry(oldPath, file.status === 'unchanged' ? head : other)] : [];
   });
   const proposed = files.filter((file) => file.status !== 'removed' && isWorkflow(file.filename)).map((file) => entry(file.filename, head));
-  let reads = 0;
   const api = {
     calls,
     async get(route, query) {
       calls.push({ route, query });
       if (overrides.fail === route) throw new ApiError(403);
-      if (route === '/pulls/42') {
-        reads++;
-        return { head: { sha: head }, base: { sha: base }, changed_files: files.length,
-          ...overrides.before, ...(reads > 1 ? overrides.after : {}) };
-      }
       if (route === '') return { default_branch: 'main' };
       if (route === '/commits/main') return { sha: head };
       if (route === `/compare/${base}...${head}`) return overrides.comparison ?? {
@@ -55,29 +49,26 @@ function fixture(overrides = {}) {
 
 const unverified = (result) => result.findings.some((finding) => finding.rule === 'workflow-inspection' && finding.level === 'error');
 
-test('inspects only changed workflows at the immutable PR head and verifies the snapshot', async () => {
+test('inspects only changed workflows at the immutable PR head', async () => {
   const api = fixture({ files: [{ filename: 'src/app.mjs', status: 'modified' }, { filename: path, status: 'modified' }] });
   const result = await inspectWorkflows(api, context);
   assert.deepEqual(result.findings, []);
   assert.equal(result.inspectedSha, head);
   assert.equal(result.inspectedCount, 1);
   assert.deepEqual(api.calls.filter((call) => call.filePath), [{ filePath: path, ref: head }]);
-  assert.equal(api.calls.filter((call) => call.route === '/pulls/42').length, 2);
+  assert.equal(api.calls.some((call) => call.route?.startsWith('/pulls/')), false);
 });
 
 test('supports trusted-base pull_request_target inspection without checkout', async () => {
   assert.deepEqual((await inspectWorkflows(fixture(), { ...context, eventName: 'pull_request_target' })).findings, []);
 });
 
-test('stale events fail before reading repository contents', async () => {
-  const api = fixture({ before: { head: { sha: other } } });
-  assert.equal(unverified(await inspectWorkflows(api, context)), true);
-  assert.equal(api.calls.some((call) => call.filePath), false);
-});
-
-test('head or base races invalidate a completed inspection', async () => {
-  for (const after of [{ head: { sha: other } }, { base: { sha: other } }]) {
-    assert.equal(unverified(await inspectWorkflows(fixture({ after }), context)), true);
+test('missing or invalid payload SHAs are unverified before API requests', async () => {
+  for (const pull_request of [{ head: { sha: head } }, { base: { sha: base } },
+    { base: { sha: 'invalid' }, head: { sha: head } }, { base: { sha: base }, head: { sha: 'invalid' } }]) {
+    const api = fixture();
+    assert.equal(unverified(await inspectWorkflows(api, { eventName: 'pull_request', payload: { pull_request } })), true);
+    assert.deepEqual(api.calls, []);
   }
 });
 
@@ -93,7 +84,7 @@ test('rejects incomplete, duplicate, capped, or malformed immutable workflow dir
 });
 
 test('immutable directory diff survives an ABA PR change and ignores mutable/capped file lists', async () => {
-  const api = fixture({ source: source.replace('permissions: {}', 'permissions: write-all'), before: { changed_files: 5000 } });
+  const api = fixture({ source: source.replace('permissions: {}', 'permissions: write-all') });
   let mutableReads = 0;
   api.list = async () => { mutableReads++; return [{ filename: 'innocent.txt', status: 'modified' }]; };
   const result = await inspectWorkflows(api, context);
@@ -112,7 +103,6 @@ test('unchanged workflow blobs are skipped, regardless of unrelated PR changes',
 test('malformed PR metadata and denied file access never pass silently', async () => {
   assert.equal(unverified(await inspectWorkflows(fixture(), { eventName: 'pull_request' })), true);
   assert.equal(unverified(await inspectWorkflows(fixture({ fileFailure: true }), context)), true);
-  assert.equal(unverified(await inspectWorkflows(fixture({ fail: '/pulls/42' }), context)), true);
 });
 
 test('renamed-in workflows are inspected; removed and renamed-out workflows are reported', async () => {
