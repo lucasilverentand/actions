@@ -6,7 +6,7 @@ The latest release is supported. Consumers should pin reviewed release commits a
 
 ## Trust boundaries
 
-The pinned PR policy workflow parses titles and bodies as data without checking out code, using a token, or executing PR text.
+The pinned PR policy workflow reads PR titles and commit messages as data through the API with read-only PR access. It does not check out code or execute PR text.
 
 The repository audit reads settings and default-branch workflow files through the API. It never executes those files or changes repository settings. Static checks cover the documented rules; they do not replace application security review or detect every way a workflow can invoke unsafe code.
 

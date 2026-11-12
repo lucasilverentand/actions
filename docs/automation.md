@@ -8,7 +8,7 @@ The workflows in `.github/workflows/` maintain this library. The templates in [e
 
 The aggregate Verify job uses ci-gate and fails unless the whole matrix succeeds. A manually dispatched [runner compatibility workflow](../.github/workflows/runner-compatibility.yml) accepts a JSON runner selector, including self-hosted groups and labels. Once the workflow is on the default branch, it can be dispatched against any branch, so a private pool can verify a change before merge. It exercises the suite without remote deletion or publication. The selected pool must already be admitted to this repository.
 
-The separate [PR policy workflow](../.github/workflows/pr-policy.yml) handles title/body edits without rerunning the OS matrix. Its job uses a pinned, published implementation with no token permissions or checkout. This checks the PR's title and body independently of changes to the candidate source. The Verify and PR policy jobs are required checks on this repository's main branch.
+The separate [PR policy workflow](../.github/workflows/pr-policy.yml) handles title/body edits without rerunning the OS matrix. Its job runs the organization's shared PR message action at a pinned commit, with read-only PR access and no checkout. It checks the PR title, including the squash suffix GitHub appends, and the PR's commit messages against the merge rules, independently of changes to the candidate source. The Verify and PR policy jobs are required checks on this repository's main branch.
 
 After Verify succeeds on main, the Publish release job uses the bundled release action, passes actual upstream job results, and computes the next version from unreleased Conventional Commits, creates its tag at the verified SHA, and publishes generated notes on GitHub. It uses only a repository-scoped workflow token. PR runs cannot publish, no version files or release PRs are created, and an already-released commit is a no-op. See the [release guide](releases.md).
 
@@ -26,7 +26,7 @@ The branch-preview job uses Contents read and Pull requests read permissions. It
 
 [dependabot.yml](../.github/dependabot.yml) requests weekly updates for npm dependencies and GitHub Actions. An npm update that affects a bundled dependency also needs regenerated bundles; the consistency check catches a source/bundle mismatch.
 
-[pull_request_template.md](../.github/pull_request_template.md) supplies Summary and Testing prompts. The template helps authors fill in a body; the pinned PR policy workflow validates the resulting text. The organization’s shared PR message policy is the single title and commit message check.
+[pull_request_template.md](../.github/pull_request_template.md) supplies Summary and Testing prompts. The template helps authors fill in a body; reviewers check it, since no workflow validates the body. The organization’s shared PR message policy is the single title and commit message check.
 
 [CODEOWNERS](../.github/CODEOWNERS) identifies who owns changes. Review requirements still depend on GitHub's branch settings. The [contribution guide](../.github/CONTRIBUTING.md) explains development, and the [security policy](../.github/SECURITY.md) explains private reporting and trust boundaries.
 
