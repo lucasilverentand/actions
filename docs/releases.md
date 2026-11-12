@@ -6,7 +6,7 @@ All actions share the same version. Published stable GitHub Releases are the ver
 
 ## How versions are chosen
 
-The publisher reads all commits between the highest published stable version and the verified main commit. Squash merging preserves the validated PR title and body as the commit message.
+The publisher reads all commits between the highest published stable version and the verified main commit. Squash merging preserves the validated PR title and the reviewed PR body as the commit message.
 
 | Merged commit | Automatic bump |
 | --- | --- |

@@ -4,7 +4,7 @@ Use Node.js 24 or newer. Install dependencies with `npm ci --ignore-scripts`, th
 
 Each public action owns its `action.yml`, `README.md`, `src/`, `test/`, and generated `dist/`. Put shared API and runner helpers in `lib/`, standalone operator tools in `tools/`, and build checks in `scripts/`. Add adoption examples in `docs/examples/`. See the [repository map](../docs/architecture.md) for the dependency boundaries.
 
-Pull requests need a Conventional Commit title that fits 72 characters with GitHub's ` (#number)` suffix, Conventional Commit messages on every commit, and meaningful `## Summary` and `## Testing` sections. The PR policy check enforces the title and commit messages; reviewers check the sections. Explain the outcome, verification, and any relevant limitations. Security-sensitive behavior needs tests covering rejection and race conditions.
+Pull requests need a Conventional Commit title whose summary after the type and scope fits 72 characters including GitHub's ` (#number)` suffix, Conventional Commit messages on every commit, and meaningful `## Summary` and `## Testing` sections. The PR policy check enforces the title and commit messages; reviewers check the sections. Explain the outcome, verification, and any relevant limitations. Security-sensitive behavior needs tests covering rejection and race conditions.
 
 Keep public examples generic. Do not add repository inventories, private findings, credentials, internal hostnames, or exceptions belonging to a particular deployment.
 
