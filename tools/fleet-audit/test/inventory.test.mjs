@@ -123,3 +123,8 @@ test('rejects wrong-scope installations and duplicate inventories even with cons
     await assert.rejects(ownedRepositories(async (path) => path === '/user' ? { login: 'example' } : entries), /Duplicate/);
   }
 });
+
+test('the usage message names every supported option', () => {
+  assert.throws(() => inventoryOptions(['--all', 'yes']), (error) =>
+    ['--org', '--concurrency', '--rules', '--trusted-owners'].every((flag) => error.message.includes(flag)));
+});

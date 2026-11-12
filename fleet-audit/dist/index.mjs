@@ -7883,7 +7883,7 @@ function inventoryOptions(args) {
       options.trustedOwners = parseTrustedOwners(value);
     } else if (flag === "--concurrency" && /^[1-4]$/.test(value)) {
       options.concurrency = Number(value);
-    } else throw new Error("Use --org ORGANIZATION and optionally --concurrency 1\u20134.");
+    } else throw new Error("Use --org ORGANIZATION, --concurrency 1\u20134, --rules JSON and --trusted-owners JSON; each is optional.");
   }
   return options;
 }
