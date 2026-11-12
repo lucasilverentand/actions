@@ -8,7 +8,7 @@ Copy the [example workflow](../docs/examples/repository-audit.yml) for nightly a
 
 | Area | Baseline |
 | --- | --- |
-| Merge settings | Squash-only merges; PR title and body become the commit message; merged branches are deleted automatically |
+| Merge settings | Squash-only merges; PR title and body become the commit message; merged branches are deleted automatically. Read through GraphQL when a read-only token's repository response omits them |
 | Default branch | Require PRs and CI checks; block force pushes and deletion; resolve review conversations |
 | Workflow defaults | Read-only tokens; workflows cannot create and approve PRs by default |
 | Security features | Dependency vulnerability alerts; secret scanning and push protection when inspectable |
@@ -27,7 +27,7 @@ Workflow linting also checks job/service container digests, permission-map struc
 
 ## Tuning rules
 
-Rule IDs: `actions-approval`, `actions-permissions`, `admin-bypass`, `block-branch-deletion`, `block-force-push`, `branch-protection`, `default-branch-head`, `default-token`, `delete-merged-branches`, `dependency-updates`, `description`, `license`, `merge-method`, `readme`, `repository-files`, `require-checks`, `require-pull-request`, `required-check`, `resolve-conversations`, `secret-scanning`, `secret-scanning-push-protection`, `security-policy`, `squash-message`, `vulnerability-alerts`, `workflow-audit`, `workflow-checkout-credentials`, `workflow-container-pin`, `workflow-injection`, `workflow-parse`, `workflow-permissions`, `workflow-pin`, `workflow-privileged-checkout`, `workflow-runner`, `workflow-secrets`, `workflow-timeout`, `workflow-write-all`, `workflows`.
+Rule IDs: `actions-approval`, `actions-permissions`, `admin-bypass`, `block-branch-deletion`, `block-force-push`, `branch-protection`, `default-branch-head`, `default-token`, `delete-merged-branches`, `dependency-updates`, `description`, `license`, `merge-method`, `merge-settings`, `readme`, `repository-files`, `require-checks`, `require-pull-request`, `required-check`, `resolve-conversations`, `secret-scanning`, `secret-scanning-push-protection`, `security-policy`, `squash-message`, `vulnerability-alerts`, `workflow-audit`, `workflow-checkout-credentials`, `workflow-container-pin`, `workflow-injection`, `workflow-parse`, `workflow-permissions`, `workflow-pin`, `workflow-privileged-checkout`, `workflow-runner`, `workflow-secrets`, `workflow-timeout`, `workflow-write-all`, `workflows`.
 
 For example:
 
