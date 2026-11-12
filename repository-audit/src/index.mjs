@@ -1,3 +1,4 @@
+import { parseRules, parseTrustedOwners } from '../../lib/rules.mjs';
 import { GitHub } from '../../lib/github.mjs';
 import { boolean, escapeMarkdown, input, output, runIfMain, summary } from '../../lib/runtime.mjs';
 import { auditRepository } from './audit.mjs';
@@ -5,7 +6,7 @@ export { auditRepository } from './audit.mjs';
 
 export async function main() {
   const api = new GitHub(input('token'));
-  const findings = await auditRepository(api, { requiredChecks: JSON.parse(input('required-checks', '[]')) });
+  const findings = await auditRepository(api, { requiredChecks: JSON.parse(input('required-checks', '[]')), rules: parseRules(input('rules', '{}')), trustedOwners: parseTrustedOwners(input('trusted-owners', '[]')) });
   output('findings', findings);
   output('passed', !findings.some((f) => f.level === 'error'));
   summary('Repository audit', findings.length ? [

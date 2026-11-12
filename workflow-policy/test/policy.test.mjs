@@ -1,3 +1,5 @@
+import { knownRules } from '../../lib/rules.mjs';
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { inspectWorkflows } from '../src/index.mjs';
@@ -166,4 +168,12 @@ test('workflow reads are bounded to four and findings preserve input order despi
   assert.equal(active, 0);
   assert.equal(result.inspectedCount, files.length);
   assert.deepEqual(result.findings.map((finding) => finding.path), files.map((file) => file.filename));
+});
+
+test('overrides downgrade workflow policy findings but cannot silence failed inspections', async () => {
+  const result = await inspectWorkflows(fixture({ source: source.replace('permissions: {}', 'permissions: write-all') }), { ...context, rules: { 'workflow-write-all': 'warning' } });
+  assert.equal(result.findings.some((f) => f.level === 'error'), false);
+  const failed = await inspectWorkflows(fixture({ fileFailure: true }), { ...context, rules: Object.fromEntries(knownRules.map((id) => [id, 'off'])) });
+  assert.equal(failed.findings[0].unverified, true);
+  assert.equal(failed.findings[0].level, 'error');
 });

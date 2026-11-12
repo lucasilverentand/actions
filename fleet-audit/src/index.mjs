@@ -1,3 +1,4 @@
+import { parseRules, parseTrustedOwners } from '../../lib/rules.mjs';
 import { mkdtemp } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -21,6 +22,8 @@ export async function main() {
   const token = input('token');
   const organization = input('organization');
   const options = inventoryOptions(organization ? ['--org', organization] : []);
+  options.rules = parseRules(input('rules', '{}'));
+  options.trustedOwners = parseTrustedOwners(input('trusted-owners', '[]'));
   options.concurrency = integer(input('inspection-concurrency', '2'), 1, 4);
   const failOnError = boolean(input('fail-on-error', 'true'));
   const get = inventoryReader(token);

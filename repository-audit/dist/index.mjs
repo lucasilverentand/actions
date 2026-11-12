@@ -7365,6 +7365,81 @@ var require_dist = __commonJS({
   }
 });
 
+// lib/rules.mjs
+var knownRules = Object.freeze([
+  "actions-approval",
+  "actions-permissions",
+  "admin-bypass",
+  "block-branch-deletion",
+  "block-force-push",
+  "branch-protection",
+  "default-branch-head",
+  "default-token",
+  "delete-merged-branches",
+  "dependency-updates",
+  "description",
+  "inspection",
+  "license",
+  "merge-method",
+  "readme",
+  "repository-files",
+  "require-checks",
+  "require-pull-request",
+  "required-check",
+  "resolve-conversations",
+  "secret-scanning",
+  "secret-scanning-push-protection",
+  "security-policy",
+  "squash-message",
+  "vulnerability-alerts",
+  "workflow-audit",
+  "workflow-checkout-credentials",
+  "workflow-container-pin",
+  "workflow-injection",
+  "workflow-inspection",
+  "workflow-parse",
+  "workflow-permissions",
+  "workflow-pin",
+  "workflow-privileged-checkout",
+  "workflow-removed",
+  "workflow-runner",
+  "workflow-secrets",
+  "workflow-timeout",
+  "workflow-write-all",
+  "workflows"
+]);
+function parseRules(text) {
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    throw new Error("rules must be a JSON object of known rule ids and levels.");
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value) || Object.entries(value).length > 100 || Object.entries(value).some(([rule, level]) => !knownRules.includes(rule) || !["error", "warning", "off"].includes(level))) {
+    throw new Error("rules must be a JSON object of known rule ids and levels.");
+  }
+  return value;
+}
+function parseTrustedOwners(text) {
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    throw new Error("trusted-owners must be a JSON array of up to 50 valid owner logins.");
+  }
+  if (!Array.isArray(value) || value.length > 50 || value.some((owner) => typeof owner !== "string" || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(owner))) {
+    throw new Error("trusted-owners must be a JSON array of up to 50 valid owner logins.");
+  }
+  return value;
+}
+function applyRules(findings, rules = {}) {
+  return findings.flatMap((finding) => {
+    if (finding.unverified || !Object.hasOwn(rules, finding.rule)) return [finding];
+    if (rules[finding.rule] === "off") return [];
+    return [{ ...finding, level: rules[finding.rule] }];
+  });
+}
+
 // lib/network.mjs
 import * as http from "node:http";
 var configured = false;
@@ -7491,7 +7566,7 @@ function runIfMain(meta, fn) {
 var import_yaml = __toESM(require_dist(), 1);
 var mapping = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 var permissions = /* @__PURE__ */ new Set(["actions", "artifact-metadata", "attestations", "checks", "contents", "deployments", "discussions", "id-token", "issues", "models", "packages", "pages", "pull-requests", "security-events", "statuses"]);
-function inspectWorkflow(source, path) {
+function inspectWorkflow(source, path, options = {}) {
   const findings = [];
   const add = (rule, message) => findings.push({ rule, message, path, level: "error" });
   try {
@@ -7546,7 +7621,7 @@ function inspectWorkflow(source, path) {
       }
     }
   } catch {
-    add("workflow-parse", "Could not safely parse this workflow; inspect its YAML and structure.");
+    findings.push({ rule: "workflow-parse", message: "Could not safely parse this workflow; inspect its YAML and structure.", path, level: "error", unverified: true });
   }
   return findings;
   function inspectPermissions(value) {
@@ -7562,12 +7637,16 @@ function inspectWorkflow(source, path) {
       add("workflow-container-pin", "Pin job and service container images to SHA-256 digests.");
     }
   }
+  function trustedReference(uses) {
+    const match = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)(?:\/[A-Za-z0-9_.-]+)*@([^\s@]+)$/.exec(uses);
+    return !!match && (options.trustedOwners ?? []).some((owner) => owner.toLowerCase() === match[1].toLowerCase());
+  }
   function inspectUses(uses) {
     if (typeof uses !== "string") return add("workflow-pin", "Action references must be literal strings.");
     if (uses.startsWith("./")) return;
     if (uses.startsWith("docker://")) {
       if (!/@sha256:[a-f0-9]{64}$/.test(uses)) add("workflow-pin", "Pin container actions to a SHA-256 digest.");
-    } else if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+@[a-f0-9]{40}$/.test(uses)) {
+    } else if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_./-]+@[a-f0-9]{40}$/.test(uses) && !trustedReference(uses)) {
       add("workflow-pin", "Pin external actions and reusable workflows to full commit SHAs.");
     }
   }
@@ -7604,7 +7683,7 @@ async function mapConcurrent(items, concurrency, mapper) {
 }
 
 // repository-audit/src/audit.mjs
-async function auditRepository(api, { requiredChecks = [] } = {}) {
+async function auditRepository(api, { requiredChecks = [], rules = {}, trustedOwners = [] } = {}) {
   if (!Array.isArray(requiredChecks) || requiredChecks.length > 100 || requiredChecks.some((check) => typeof check !== "string" || !check.trim() || check !== check.trim())) {
     throw new Error("required-checks must be a JSON array of nonempty check names.");
   }
@@ -7623,8 +7702,8 @@ async function auditRepository(api, { requiredChecks = [] } = {}) {
   }
   await inspect("branch-protection", async () => {
     const branch = encodeURIComponent(ref);
-    const rules = await api.list(`/rules/branches/${branch}`);
-    const types = new Set(rules.map((r) => r.type));
+    const rules2 = await api.list(`/rules/branches/${branch}`);
+    const types = new Set(rules2.map((r) => r.type));
     let classic;
     try {
       classic = await api.get(`/branches/${branch}/protection`);
@@ -7635,7 +7714,7 @@ async function auditRepository(api, { requiredChecks = [] } = {}) {
       add("require-pull-request", "Require pull requests for the default branch.");
     }
     const checkNames = new Set([
-      ...rules.filter((rule) => rule.type === "required_status_checks").flatMap((rule) => (rule.parameters?.required_status_checks ?? []).map((check) => check.context)),
+      ...rules2.filter((rule) => rule.type === "required_status_checks").flatMap((rule) => (rule.parameters?.required_status_checks ?? []).map((check) => check.context)),
       ...classic?.required_status_checks?.contexts ?? [],
       ...(classic?.required_status_checks?.checks ?? []).map((check) => check.context)
     ].filter((check) => typeof check === "string" && check.trim()));
@@ -7651,7 +7730,7 @@ async function auditRepository(api, { requiredChecks = [] } = {}) {
     if (!types.has("deletion") && (!classic || classic.allow_deletions?.enabled !== false)) {
       add("block-branch-deletion", "Protect the default branch from deletion.");
     }
-    const rulesRequireResolution = rules.some((r) => r.type === "pull_request" && r.parameters?.required_review_thread_resolution);
+    const rulesRequireResolution = rules2.some((r) => r.type === "pull_request" && r.parameters?.required_review_thread_resolution);
     if (!rulesRequireResolution && !classic?.required_conversation_resolution?.enabled) {
       add("resolve-conversations", "Require review conversations to be resolved.");
     }
@@ -7705,11 +7784,11 @@ async function auditRepository(api, { requiredChecks = [] } = {}) {
     const inspected = await mapConcurrent(
       workflows.filter((file) => /\.ya?ml$/.test(file.name)),
       4,
-      async (file) => inspectWorkflow(await api.file(file.path, contentRef), file.path)
+      async (file) => inspectWorkflow(await api.file(file.path, contentRef), file.path, { trustedOwners })
     );
     findings.push(...inspected.flat());
   });
-  return findings;
+  return applyRules(findings, rules);
   async function directory(path) {
     try {
       const entries = await api.get(`/contents/${path}`, { ref: contentRef });
@@ -7724,7 +7803,7 @@ async function auditRepository(api, { requiredChecks = [] } = {}) {
     try {
       await operation();
     } catch {
-      add(rule, "Inspection failed or the token lacks access; this check is unverified.");
+      findings.push({ rule, message: "Inspection failed or the token lacks access; this check is unverified.", level: "error", unverified: true });
     }
   }
 }
@@ -7732,7 +7811,7 @@ async function auditRepository(api, { requiredChecks = [] } = {}) {
 // repository-audit/src/index.mjs
 async function main() {
   const api = new GitHub(input("token"));
-  const findings = await auditRepository(api, { requiredChecks: JSON.parse(input("required-checks", "[]")) });
+  const findings = await auditRepository(api, { requiredChecks: JSON.parse(input("required-checks", "[]")), rules: parseRules(input("rules", "{}")), trustedOwners: parseTrustedOwners(input("trusted-owners", "[]")) });
   output("findings", findings);
   output("passed", !findings.some((f) => f.level === "error"));
   summary("Repository audit", findings.length ? [

@@ -85,3 +85,13 @@ test('allows only narrow same-repository guards for self-hosted PR runners', () 
   }
   assert.equal(trustedPullRequestGate(equality, ['pull_request_target']), true);
 });
+
+test('trusted owners permit branch and tag references only in valid external references', () => {
+  const workflow = (uses) => `on: push\npermissions: {}\njobs:\n  check:\n    runs-on: ubuntu-latest\n    timeout-minutes: 5\n    steps:\n      - uses: ${uses}\n`;
+  const pinned = (uses, owners = []) => inspectWorkflow(workflow(uses), 'ci.yml', { trustedOwners: owners }).some((f) => f.rule === 'workflow-pin');
+  for (const ref of ['example-org/tools/.github/workflows/check.yml@main', 'example-org/action@v1']) {
+    assert.equal(pinned(ref), true);
+    assert.equal(pinned(ref, ['EXAMPLE-ORG']), false);
+  }
+  for (const ref of ['other/action@main', 'example-org/action@', '"example-org/action@bad ref"', 'docker://example-org/action:latest']) assert.equal(pinned(ref, ['example-org']), true);
+});

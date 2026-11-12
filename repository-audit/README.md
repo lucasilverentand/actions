@@ -25,6 +25,19 @@ Required-check rules must contain actual check names; an empty ruleset does not 
 
 Workflow linting also checks job/service container digests, permission-map structure, malformed steps, and bracket-notation event/input interpolation. Self-hosted PR jobs may use the narrowly recognized same-repository guards documented in [workflow policy](../workflow-policy/); more complex guards remain flagged for review.
 
+## Tuning rules
+
+Rule IDs: `actions-approval`, `actions-permissions`, `admin-bypass`, `block-branch-deletion`, `block-force-push`, `branch-protection`, `default-branch-head`, `default-token`, `delete-merged-branches`, `dependency-updates`, `description`, `license`, `merge-method`, `readme`, `repository-files`, `require-checks`, `require-pull-request`, `required-check`, `resolve-conversations`, `secret-scanning`, `secret-scanning-push-protection`, `security-policy`, `squash-message`, `vulnerability-alerts`, `workflow-audit`, `workflow-checkout-credentials`, `workflow-container-pin`, `workflow-injection`, `workflow-parse`, `workflow-permissions`, `workflow-pin`, `workflow-privileged-checkout`, `workflow-runner`, `workflow-secrets`, `workflow-timeout`, `workflow-write-all`, `workflows`.
+
+For example:
+
+```yaml
+rules: '{"workflow-timeout": "warning", "description": "off"}'
+trusted-owners: '["example-org"]'
+```
+
+Unverified inspections always stay errors.
+
 ## Permissions
 
 A full audit needs a repository-scoped credential with Contents read, Administration read, and vulnerability alerts read. Prefer a short-lived GitHub App installation token; a fine-grained personal access token limited to selected repositories is another option. Supply it as `REPOSITORY_AUDIT_TOKEN` in the consuming repository.
@@ -35,6 +48,8 @@ The built-in `GITHUB_TOKEN` cannot inspect every administrative setting. It can 
 
 | Input | Default | Meaning |
 | --- | --- | --- |
+| `rules` | `{}` | JSON object mapping rule ids to error, warning or off. Unverified inspections cannot be changed. |
+| `trusted-owners` | `[]` | JSON array of owners whose actions and reusable workflows may be referenced by branch or tag. |
 | `token` | `${{ github.token }}` | GitHub credential used only for read requests |
 | `fail-on-error` | `true` | Fail the step if errors or unverified checks are found |
 | `required-checks` | `[]` | JSON array of exact required CI check names, such as `["Verify", "PR policy"]` |

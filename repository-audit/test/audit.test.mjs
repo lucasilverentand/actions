@@ -1,3 +1,5 @@
+import { knownRules } from '../../lib/rules.mjs';
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { auditRepository } from '../src/index.mjs';
@@ -126,4 +128,11 @@ test('repository workflow reads are bounded and preserve directory order', async
   assert.equal(maximum, 4);
   assert.equal(active, 0);
   assert.deepEqual(findings.map((finding) => finding.path), entries.map((entry) => entry.path));
+});
+
+test('overrides change policy findings but cannot suppress failed inspections', async () => {
+  const downgraded = await auditRepository(fixture({ repo: { delete_branch_on_merge: false } }), { rules: { 'delete-merged-branches': 'warning' } });
+  assert.equal(downgraded.some((f) => f.level === 'error'), false);
+  const failed = await auditRepository(fixture({ fail: '/actions/permissions/workflow' }), { rules: Object.fromEntries(knownRules.map((id) => [id, 'off'])) });
+  assert.deepEqual(failed.map(({ rule, level, unverified }) => ({ rule, level, unverified })), [{ rule: 'actions-permissions', level: 'error', unverified: true }]);
 });

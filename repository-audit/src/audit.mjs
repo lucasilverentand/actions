@@ -1,8 +1,9 @@
+import { applyRules } from '../../lib/rules.mjs';
 import { ApiError } from '../../lib/github.mjs';
 import { inspectWorkflow } from './workflows.mjs';
 import { mapConcurrent } from '../../lib/concurrency.mjs';
 
-export async function auditRepository(api, { requiredChecks = [] } = {}) {
+export async function auditRepository(api, { requiredChecks = [], rules = {}, trustedOwners = [] } = {}) {
   if (!Array.isArray(requiredChecks) || requiredChecks.length > 100 || requiredChecks.some((check) => typeof check !== 'string' || !check.trim() || check !== check.trim())) {
     throw new Error('required-checks must be a JSON array of nonempty check names.');
   }
@@ -102,10 +103,10 @@ export async function auditRepository(api, { requiredChecks = [] } = {}) {
     const workflows = await directory('.github/workflows');
     if (!workflows.length) add('workflows', 'Add CI workflows.', 'warning');
     const inspected = await mapConcurrent(workflows.filter((file) => /\.ya?ml$/.test(file.name)), 4,
-      async (file) => inspectWorkflow(await api.file(file.path, contentRef), file.path));
+      async (file) => inspectWorkflow(await api.file(file.path, contentRef), file.path, { trustedOwners }));
     findings.push(...inspected.flat());
   });
-  return findings;
+  return applyRules(findings, rules);
 
   async function directory(path) {
     try {
@@ -120,7 +121,7 @@ export async function auditRepository(api, { requiredChecks = [] } = {}) {
 
   async function inspect(rule, operation) {
     try { await operation(); }
-    catch { add(rule, 'Inspection failed or the token lacks access; this check is unverified.'); }
+    catch { findings.push({ rule, message: 'Inspection failed or the token lacks access; this check is unverified.', level: 'error', unverified: true }); }
   }
 }
 

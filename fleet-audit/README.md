@@ -10,12 +10,27 @@ Supply a scoped read credential that can inspect the private controller and the 
 
 | Input | Default | Meaning |
 | --- | --- | --- |
+| `rules` | `{}` | JSON object mapping rule ids to error, warning or off. Unverified inspections cannot be changed. |
+| `trusted-owners` | `[]` | JSON array of owners whose actions and reusable workflows may be referenced by branch or tag. |
 | `token` | Required | Read credential covering the controller and audited repositories |
 | `organization` | Empty | Explicit organization login; empty selects personal repositories |
 | `fail-on-error` | `true` | Fail for errors and unverified inspections; `false` allows report-only adoption |
 | `inspection-concurrency` | `2` | Concurrent repository inspections, from 1–4 |
 
 Archived, disabled, and fork repositories are excluded. Inventory failures stop the run instead of reporting a successful partial fleet. Individual repository inspection failures remain error findings so the remaining repositories can still be reported.
+
+## Tuning rules
+
+Rule IDs: `actions-approval`, `actions-permissions`, `admin-bypass`, `block-branch-deletion`, `block-force-push`, `branch-protection`, `default-branch-head`, `default-token`, `delete-merged-branches`, `dependency-updates`, `description`, `inspection`, `license`, `merge-method`, `readme`, `repository-files`, `require-checks`, `require-pull-request`, `required-check`, `resolve-conversations`, `secret-scanning`, `secret-scanning-push-protection`, `security-policy`, `squash-message`, `vulnerability-alerts`, `workflow-audit`, `workflow-checkout-credentials`, `workflow-container-pin`, `workflow-injection`, `workflow-parse`, `workflow-permissions`, `workflow-pin`, `workflow-privileged-checkout`, `workflow-runner`, `workflow-secrets`, `workflow-timeout`, `workflow-write-all`, `workflows`.
+
+For example:
+
+```yaml
+rules: '{"workflow-timeout": "warning", "description": "off"}'
+trusted-owners: '["example-org"]'
+```
+
+Unverified inspections always stay errors.
 
 ## Results and retention
 

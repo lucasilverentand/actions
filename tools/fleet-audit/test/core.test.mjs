@@ -1,3 +1,5 @@
+import { knownRules } from '../../../lib/rules.mjs';
+
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chmod, lstat, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
@@ -105,4 +107,16 @@ test('summary lists repositories needing attention with escaped findings, errors
   ]);
   const capped = reportSummary(report, 2);
   assert.deepEqual(capped, ['- **example/failing**', '  - error: Pin &#91;external&#93; actions &#124; now (.github/workflows/ci.yml)', '', '2 more findings are only in the private report.']);
+});
+
+test('fleet applies overrides and keeps inaccessible repositories as errors', async () => {
+  const report = await auditFleet(getInventory, { rules: Object.fromEntries(knownRules.map((id) => [id, 'off'])) }, async (name) => {
+    if (name === 'example/one') throw new Error('inaccessible');
+    return [{ rule: 'workflow-pin', level: 'error', message: 'Pin.' }];
+  });
+  assert.equal(reportCounts(report).errors, 1);
+  assert.equal(report.repositories[0].findings[0].unverified, true);
+  assert.deepEqual(report.repositories[1].findings, []);
+  const warned = await auditFleet(getInventory, { rules: { 'workflow-pin': 'warning' } }, async () => [{ rule: 'workflow-pin', level: 'error' }]);
+  assert.equal(reportCounts(warned).errors, 0);
 });

@@ -1,3 +1,5 @@
+import { parseRules, parseTrustedOwners } from '../../lib/rules.mjs';
+
 function validateOrganization(organization) {
   if (typeof organization !== 'string' || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(organization)) {
     throw new Error('Expected a GitHub organization login.');
@@ -15,6 +17,10 @@ export function inventoryOptions(args) {
     if (flag === '--org') {
       validateOrganization(value);
       options.organization = value;
+    } else if (flag === '--rules') {
+      options.rules = parseRules(value);
+    } else if (flag === '--trusted-owners') {
+      options.trustedOwners = parseTrustedOwners(value);
     } else if (flag === '--concurrency' && /^[1-4]$/.test(value)) {
       options.concurrency = Number(value);
     } else throw new Error('Use --org ORGANIZATION and optionally --concurrency 1–4.');
